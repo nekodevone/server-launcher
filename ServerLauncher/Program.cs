@@ -1,5 +1,8 @@
 ﻿namespace ServerLauncher;
 
-public class Class1
+public static class Program
 {
+    public static void Main()
+    {
+    }
 }
