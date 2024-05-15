@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ServerLauncher
+﻿namespace ServerLauncher
 {
     /// <summary>
     /// Класс логгера
@@ -21,7 +15,7 @@ namespace ServerLauncher
             {
                 Directory.CreateDirectory(directory);
             }
-            
+
             _path = Path.Combine(directory, "logs.log");
 
             if (File.Exists(_path))
@@ -31,7 +25,7 @@ namespace ServerLauncher
 
             File.Create(_path);
         }
-        
+
         private readonly string _path;
 
         /// <summary>
@@ -43,7 +37,7 @@ namespace ServerLauncher
         {
             Send($"[INFO] [{tag}] {message}", ConsoleColor.Blue);
         }
-        
+
         /// <summary>
         /// Выводит в консоль сообщение
         /// </summary>
@@ -53,7 +47,7 @@ namespace ServerLauncher
         {
             Send($"[ERROR] [{tag}] {message}", ConsoleColor.Red);
         }
-        
+
         /// <summary>
         /// Выводит в консоль сообщение
         /// </summary>
@@ -73,12 +67,12 @@ namespace ServerLauncher
         {
             var stream = File.AppendText(_path);
             stream.Write(message);
-            
+
             if (!message.EndsWith(Environment.NewLine))
             {
                 stream.WriteLine();
             }
-            
+
             stream.Flush();
             Console.ForegroundColor = consoleColor;
             Console.WriteLine($"[{DateTime.Now}] {message}");
