@@ -70,7 +70,7 @@ public class LaunchConfig : InheritableConfigRegister
 
     public override bool ShouldInheritConfigEntry(ConfigEntry configEntry)
     {
-        return true;
+        return ConfigContains(configEntry.Key);
     }
 
     public override void UpdateConfigValueInheritable(ConfigEntry configEntry)
@@ -78,7 +78,12 @@ public class LaunchConfig : InheritableConfigRegister
         Console.WriteLine(configEntry.Description);
     }
 
-    public void ReloadConfig()
+    private bool ConfigContains(string key)
+    {
+        return Config != null && Config.Contains(key);
+    }
+
+    private void ReloadConfig()
     {
         ParentConfig?.ReloadConfig();
         Config?.ReadConfigFile();

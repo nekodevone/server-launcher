@@ -4,7 +4,7 @@ namespace ServerLauncher.Config;
 
 public class Config
 {
-    private ConfigStorage RawData;
+    private string[] RawData;
     
     private string internalConfigPath;
     
@@ -54,5 +54,11 @@ public class Config
             Console.WriteLine(e);
             throw;
         }
+    }
+    
+    public bool Contains(string key)
+    {
+        return RawData != null &&
+               RawData.Any(entry => entry.StartsWith($"{key}:", StringComparison.CurrentCultureIgnoreCase));
     }
 }
