@@ -43,6 +43,16 @@
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
+        public void Debug(string tag, string message)
+        {
+            Send($"[INFO] [{tag}] {message}", ConsoleColor.DarkGray);
+        }
+        
+        /// <summary>
+        /// Выводит в консоль сообщение
+        /// </summary>
+        /// <param name="tag"></param>
+        /// <param name="message"></param>
         public void Error(string tag, string message)
         {
             Send($"[ERROR] [{tag}] {message}", ConsoleColor.Red);

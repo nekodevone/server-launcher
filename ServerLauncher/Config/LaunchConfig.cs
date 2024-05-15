@@ -70,7 +70,7 @@ public class LaunchConfig : InheritableConfigRegister
 
     public override bool ShouldInheritConfigEntry(ConfigEntry configEntry)
     {
-        return ConfigContains(configEntry.Key);
+        return !ConfigContains(configEntry.Key);
     }
 
     public override void UpdateConfigValueInheritable(ConfigEntry configEntry)

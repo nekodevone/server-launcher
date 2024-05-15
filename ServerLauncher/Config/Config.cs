@@ -1,4 +1,5 @@
-﻿using ServerLauncher.Utility;
+﻿using System.Text;
+using ServerLauncher.Utility;
 
 namespace ServerLauncher.Config;
 
@@ -47,7 +48,7 @@ public class Config
 
         try
         {
-           //RawData = File.Exists(ConfigPath) ? JsonSerializer.Deserialize<ConfigStorage>(ConfigPath) : null;
+           RawData = File.Exists(ConfigPath) ? File.ReadAllLines(ConfigPath, Encoding.UTF8) : [];
         }
         catch (Exception e)
         {
