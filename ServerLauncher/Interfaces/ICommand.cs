@@ -8,5 +8,7 @@ public interface ICommand
     
     string Usage { get; }
     
+    bool IsPassToGame { get; }
+    
     void Execute(ArraySegment<string> arguments);
 }

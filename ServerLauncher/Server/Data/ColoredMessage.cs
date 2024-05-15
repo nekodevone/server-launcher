@@ -2,19 +2,31 @@ namespace ServerLauncher.Server.Data;
 
 public class ColoredMessage : ICloneable
 {
-	public ColoredMessage(string text, ConsoleColor? textColor = null)
+	public ColoredMessage(string text, ConsoleColor textColor = ConsoleColor.White)
 	{
 		Text = text;
 		TextColor = textColor;
 	}
 	
 	public string Text { get; set; }
-	public ConsoleColor? TextColor { get; set; }
+	public ConsoleColor TextColor { get; set; }
 
 	public int Length => Text?.Length ?? 0;
 
 	public bool Equals(ColoredMessage other) => string.Equals(Text, other.Text) && TextColor == other.TextColor;
 
+	public void Write()
+	{
+		lock (Utilities.Lock)
+		{
+			var lastColor = Console.ForegroundColor;
+
+			Console.ForegroundColor = TextColor;
+			Console.WriteLine(Text);
+			Console.ForegroundColor = lastColor;
+		}
+	}
+	
 	public override bool Equals(object obj)
 	{
 		if (ReferenceEquals(null, obj))
@@ -63,7 +75,7 @@ public class ColoredMessage : ICloneable
 
 	public override string ToString() => Text;
 
-	private ColoredMessage Clone()
+	public ColoredMessage Clone()
 	{
 		return new ColoredMessage(Text?.Clone() as string, TextColor);
 	}

@@ -1,4 +1,5 @@
 ﻿using ServerLauncher.Config.ConfigHandler;
+using ServerLauncher.Server.Handlers;
 using ServerLauncher.Utility;
 
 namespace ServerLauncher.Config;
@@ -35,7 +36,7 @@ public class LaunchConfig : InheritableConfigRegister
                     File.Create(Config.ConfigPath).Close();
                 }
             }
-            catch (Exception e)
+            catch
             {
             }
         }

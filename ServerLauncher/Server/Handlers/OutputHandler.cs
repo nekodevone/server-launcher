@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using ServerLauncher.Interfaces.Events;
-using ServerLauncher.Server.Data;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.EventArgs;
+using ServerLauncher.Server.Handlers.Enums;
 
 namespace ServerLauncher.Server.Handlers;
 
@@ -12,30 +12,16 @@ public class OutputHandler
 			new Regex(@"\[(DEBUG|INFO|WARN|ERROR)\] (\[.*?\]) (.*)", RegexOptions.Compiled | RegexOptions.Singleline);
 		public static readonly char[] TrimChars = { '.', ' ', '\t', '!', '?', ',' };
 		public static readonly char[] EventSplitChars = new char[] {':'};
-
-		private readonly Server server;
-
-		private enum OutputCodes : byte
-		{
-			//0x00 - 0x0F - reserved for colors
-
-			RoundRestart = 0x10,
-			IdleEnter = 0x11,
-			IdleExit = 0x12,
-			ExitActionReset = 0x13,
-			ExitActionShutdown = 0x14,
-			ExitActionSilentShutdown = 0x15,
-			ExitActionRestart = 0x16,
-			RoundEnd = 0x17
-		}
-
-		// Temporary measure to handle round ends until the game updates to use this
-		private bool roundEndCodeUsed = false;
-
+		
 		public OutputHandler(Server server)
 		{
 			this.server = server;
 		}
+		
+		// Temporary measure to handle round ends until the game updates to use this
+		private bool roundEndCodeUsed = false;
+		
+		private readonly Server server;
 
 		public void HandleMessage(object source, MessageEventArgs message)
 		{

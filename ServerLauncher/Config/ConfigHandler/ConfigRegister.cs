@@ -8,7 +8,7 @@ namespace ServerLauncher.Config.ConfigHandler
         /// <summary>
         /// Список зарегистрированных <see cref="ConfigEntry"/>
         /// </summary>
-        private readonly HashSet<ConfigEntry> RegisteredConfigs = [];
+        private readonly HashSet<ConfigEntry> RegisteredConfigs = new();
 
         /// <summary>
         /// Возвращает массив зарегистрированных <see cref="ConfigEntry"/>

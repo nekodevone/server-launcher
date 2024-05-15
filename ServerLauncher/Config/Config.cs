@@ -48,7 +48,7 @@ public class Config
 
         try
         {
-           RawData = File.Exists(ConfigPath) ? File.ReadAllLines(ConfigPath, Encoding.UTF8) : [];
+           RawData = File.Exists(ConfigPath) ? File.ReadAllLines(ConfigPath, Encoding.UTF8) : Array.Empty<string>();
         }
         catch (Exception e)
         {

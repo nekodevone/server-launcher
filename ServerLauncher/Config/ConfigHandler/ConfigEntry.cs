@@ -72,12 +72,12 @@ namespace ServerLauncher.Config.ConfigHandler
         /// <summary>
         /// Типизированное значение <see cref="ConfigEntry{T}"/>
         /// </summary>
-        private T Value { get; set; }
+        public T Value { get; set; }
 
         /// <summary>
         /// Типизированное значение по умолчанию <see cref="ConfigEntry{T}"/>
         /// </summary>
-        private T Default { get; set; }
+        public T Default { get; set; }
 
         public override object ObjectValue
         {

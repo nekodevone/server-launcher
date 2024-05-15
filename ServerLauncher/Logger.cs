@@ -33,9 +33,9 @@
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
-        public void Log(string tag, string message)
+        public void Log(string tag, string message, ConsoleColor consoleColor = ConsoleColor.Blue)
         {
-            Send($"[INFO] [{tag}] {message}", ConsoleColor.Blue);
+            Send($"[INFO] [{tag}] {message}", consoleColor);
         }
 
         /// <summary>

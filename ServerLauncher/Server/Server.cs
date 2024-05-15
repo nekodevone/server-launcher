@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using ServerLauncher.Config;
+using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
+using ServerLauncher.Interfaces;
 using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Handlers;
@@ -38,6 +40,11 @@ public class Server
     /// Конфиг
     /// </summary>
     public LaunchConfig Config { get; private set; }
+    
+    /// <summary>
+    /// Команды
+    /// </summary>
+    public Dictionary<string, ICommand> Commands { get; } = new Dictionary<string, ICommand>();
 
     /// <summary>
     /// Запущен ли процесс игры
@@ -131,6 +138,30 @@ public class Server
     public DateTime StartTime { get; private set; }
     
     /// <summary>
+    /// Время запуска в виде строки
+    /// </summary>
+    public string StartDateTime
+    {
+        get => _startDateTime;
+
+        private set
+        {
+            _startDateTime = value;
+
+            // Update related variables
+            LogDirectoryFile = string.IsNullOrEmpty(value) || string.IsNullOrEmpty(LogDirectory)
+                ? null
+                : $"{Path.Combine(LogDirectory.EscapeFormat(), value)}_{{0}}_log_{Port}.txt";
+
+            lock (this)
+            {
+                LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
+                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "SCP");
+            }
+        }
+    }
+    
+    /// <summary>
     /// Путь к файлу логов
     /// </summary>
     public string LogDirectoryFile { get; private set; }
@@ -141,10 +172,10 @@ public class Server
     public string GameLogDirectoryFile { get; private set; }
     
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > (int)Config.Storage.ServerStopTimeout.ObjectValue;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.Storage.ServerStopTimeout.Value;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > (int)Config.Storage.ServerRestartTimeout.ObjectValue;
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.Storage.ServerRestartTimeout.Value;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
     
@@ -152,51 +183,161 @@ public class Server
     
     private DateTime _initStopTimeoutTime;
     private DateTime _initRestartTimeoutTime;
+    private string _startDateTime;
 
-    public void Start()
+    public void Start(bool restartOnCrash = true)
     {
         if (Status is ServerStatusType.Running)
         {
-            //тут экспшион будет
+            throw new ServerAlreadyRunningException();
         }
-        
-        StartTime = DateTime.Now;
-        Status = ServerStatusType.Starting;
 
-        //Тут будет вызов в конфиге чё нибудь
-        
-        Log($"{Id} is executing...");
+        var shouldRestart = false;
 
-        var socket = new ServerSocket();
-
-        Socket = socket;
-
-        SetLogsDirectories();
-        
-        //Аргуменыт доделать надо, конфиг нужен а его нет
-        var arguments = GetArguments(socket.Port);
-
-        var exe = Utilities.GetExecutablePath();
-        
-        var startInfo = new ProcessStartInfo(exe, arguments.JoinArguments())
+        do
         {
-            CreateNoWindow = true, UseShellExecute = false
-        };
-        
-        Log($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
-        
-        SupportModFeatures = ModFeatures.None;
-        
-        ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
+            StartTime = DateTime.Now;
+            Status = ServerStatusType.Starting;
+            try
+            {
+//Тут будет вызов в конфиге чё нибудь
 
-        // Start the input reader
-        var inputHandlerCancellation = new CancellationTokenSource();
-        Task inputHandler = null;
-        
-        var outputHandler = new OutputHandler(this);
-        // Assign the socket events to the OutputHandler
-        socket.OnReceiveMessage += outputHandler.HandleMessage;
-        socket.OnReceiveAction += outputHandler.HandleAction;
+                Log($"{Id} is executing...");
+
+                var socket = new ServerSocket();
+
+                Socket = socket;
+
+                SetLogsDirectories();
+
+                //Аргуменыт доделать надо, конфиг нужен а его нет
+                var arguments = GetArguments(socket.Port);
+
+                var exe = Utilities.GetExecutablePath();
+
+                var startInfo = new ProcessStartInfo(exe, arguments.JoinArguments())
+                {
+                    CreateNoWindow = true, UseShellExecute = false
+                };
+
+                Log($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
+
+                SupportModFeatures = ModFeatures.None;
+
+                ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
+
+                // Start the input reader
+                var inputHandlerCancellation = new CancellationTokenSource();
+                Task inputHandler = null;
+
+                if (!Program.Headless)
+                {
+                    inputHandler = Task.Run(() => InputHandler.Write(this, inputHandlerCancellation.Token),
+                        inputHandlerCancellation.Token);
+                }
+
+                var outputHandler = new OutputHandler(this);
+                // Assign the socket events to the OutputHandler
+                socket.OnReceiveMessage += outputHandler.HandleMessage;
+                socket.OnReceiveAction += outputHandler.HandleAction;
+
+                GameProcess = Process.Start(startInfo);
+
+                Status = ServerStatusType.Running;
+
+                MainLoop();
+
+                try
+                {
+                    switch (Status)
+                    {
+                        case ServerStatusType.Stopping:
+                        case ServerStatusType.ForceStopping:
+                        case ServerStatusType.ExitActionStop:
+                            Status = ServerStatusType.Stopped;
+
+                            shouldRestart = false;
+                            break;
+
+                        case ServerStatusType.Restarting:
+                        case ServerStatusType.ExitActionRestart:
+                            shouldRestart = true;
+                            break;
+
+                        default:
+                            Status = ServerStatusType.StoppedUnexpectedly;
+
+                            ForEachHandler<IEventServerCrashed>(eventCrash => eventCrash.OnServerCrashed());
+
+                            Error("Game engine exited unexpectedly");
+
+                            shouldRestart = restartOnCrash;
+                            break;
+                    }
+
+                    GameProcess?.Dispose();
+                    GameProcess = null;
+
+                    if (inputHandler != null)
+                    {
+                        inputHandlerCancellation.Cancel();
+                        try
+                        {
+                            inputHandler.Wait();
+                        }
+                        catch (Exception)
+                        {
+                            // Task was cancelled or disposed, this is fine since we're waiting for that
+                        }
+
+                        inputHandler.Dispose();
+                        inputHandlerCancellation.Dispose();
+                    }
+
+                    socket.Disconnect();
+
+                    // Remove the socket events for OutputHandler
+                    socket.OnReceiveMessage -= outputHandler.HandleMessage;
+                    socket.OnReceiveAction -= outputHandler.HandleAction;
+
+                    Socket = null;
+                    StartDateTime = null;
+                }
+                catch (Exception exception)
+                {
+                    Error(exception.Message);
+                    Program.Logger.Error(nameof(Start), exception.Message);
+                    Error("Shutdown failed...");
+                }
+            }
+            catch (Exception exception)
+            {
+                Error(exception.Message);
+                Program.Logger.Error(nameof(Start), exception.Message);
+
+                // If the server should try to start up again
+                if (Config.Storage.ServerStartRetry.Value)
+                {
+                    shouldRestart = true;
+
+                    var waitDelayMs = Config.Storage.ServerStartRetryDelay.Value;
+
+                    if (waitDelayMs > 0)
+                    {
+                        Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
+                        Thread.Sleep(waitDelayMs);
+                    }
+                    else
+                    {
+                        Error("Startup failed! Retrying...");
+                    }
+                }
+                else
+                {
+                    Error("Startup failed! Exiting...");
+                }
+            }
+        } while (shouldRestart) ;
     }
 
     public void SetRestartStatus()
@@ -254,9 +395,9 @@ public class Server
         return true;
     }
 
-    public void Log(string message)
+    public void Log(string message, ConsoleColor consoleColor = ConsoleColor.Blue)
     {
-        Program.Logger.Log("SERVER", message);
+        Program.Logger.Log("SERVER", message, consoleColor);
     }
     
     public void Error(string message)
