@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ServerLauncher.Config;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
@@ -32,6 +33,11 @@ public class Server
     /// Процесс игры
     /// </summary>
     public Process GameProcess { get; private set; }
+    
+    /// <summary>
+    /// Конфиг
+    /// </summary>
+    public LaunchConfig Config { get; private set; }
 
     /// <summary>
     /// Запущен ли процесс игры
@@ -135,10 +141,10 @@ public class Server
     public string GameLogDirectoryFile { get; private set; }
     
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > ServerConfig.ServerStopTimeout.Value;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > (int)Config.Storage.ServerStopTimeout.ObjectValue;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > ServerConfig.ServerRestartTimeout.Value;
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > (int)Config.Storage.ServerRestartTimeout.ObjectValue;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
     
