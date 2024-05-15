@@ -4,8 +4,6 @@ namespace ServerLauncher.Config;
 
 public class ConfigStorage
 {
-    public string ConfigLocationT { get; set; } = string.Empty;
-    
     public ConfigEntry<string> ConfigLocation { get; } = new(
         "config_location", string.Empty, false, "Config Location",
         "Местоположение по умолчанию игры для хранения файлов конфигурации (директория)");
