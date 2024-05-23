@@ -27,6 +27,8 @@ public class LaunchConfig : InheritableConfigRegister
         Config = config;
         ParentConfig = parentConfig;
 
+        Storage = new ConfigStorage();
+
         if (createConfig && !File.Exists(Config?.ConfigPath))
         {
             try

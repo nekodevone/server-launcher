@@ -19,6 +19,8 @@ public class Server
         Port = port;
         LogDirectory = logDirectory;
         Arguments = arguments;
+
+        Config = new LaunchConfig(logDirectory);
     }
     
     /// <summary>
@@ -44,7 +46,7 @@ public class Server
     /// <summary>
     /// Команды
     /// </summary>
-    public Dictionary<string, ICommand> Commands { get; } = new Dictionary<string, ICommand>();
+    public Dictionary<string, ICommand> Commands { get; } = new();
 
     /// <summary>
     /// Запущен ли процесс игры
@@ -198,6 +200,7 @@ public class Server
         {
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
+            
             try
             {
 //Тут будет вызов в конфиге чё нибудь
@@ -205,6 +208,7 @@ public class Server
                 Log($"{Id} is executing...");
 
                 var socket = new ServerSocket();
+                socket.Connect();
 
                 Socket = socket;
 
@@ -433,7 +437,7 @@ public class Server
         // Creates and starts a timer
         var timer = new Stopwatch();
         timer.Restart();
-
+        
         while (IsGameProcessRunning)
         {
             foreach (var tickEvent in _tick)
@@ -488,7 +492,7 @@ public class Server
         }
     }
     
-    private List<string> GetArguments(int port)
+    private IEnumerable<string> GetArguments(int port)
     {
         var arguments = new List<string>
         {

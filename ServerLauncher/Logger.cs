@@ -9,7 +9,7 @@
         /// Инициализирует класс Logger
         /// </summary>
         /// <param name="directory">Путь где будет находится файл логов</param>
-        public Logger(string directory)
+        public  Logger(string directory)
         {
             if (!Directory.Exists(directory))
             {
@@ -20,12 +20,17 @@
 
             if (File.Exists(_path))
             {
+                _streamWriter = File.AppendText(_path);
+                
                 return;
             }
 
             File.Create(_path);
+            _streamWriter = File.AppendText(_path);
         }
 
+        private StreamWriter _streamWriter;
+        
         private readonly string _path;
 
         /// <summary>
@@ -69,21 +74,28 @@
         }
 
         /// <summary>
+        /// Очистка
+        /// </summary>
+        internal void Dispose()
+        {
+            _streamWriter.Dispose();
+        }
+
+        /// <summary>
         /// Добавляет к сообщению время, выводит в консоль и записывает в файл 
         /// </summary>
         /// <param name="message"></param>
         /// <param name="consoleColor"></param>
         private void Send(string message, ConsoleColor consoleColor)
         {
-            var stream = File.AppendText(_path);
-            stream.Write(message);
+            _streamWriter.Write(message);
 
             if (!message.EndsWith(Environment.NewLine))
             {
-                stream.WriteLine();
+                _streamWriter.WriteLine();
             }
 
-            stream.Flush();
+            _streamWriter.Flush();
             Console.ForegroundColor = consoleColor;
             Console.WriteLine($"[{DateTime.Now}] {message}");
         }
