@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
@@ -6,6 +5,7 @@ using ServerLauncher.Interfaces;
 using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Handlers;
+using System.Diagnostics;
 
 namespace ServerLauncher.Server;
 
@@ -22,7 +22,8 @@ public class Server
         LogDirectory = logDirectory;
         Arguments = arguments;
 
-        Config = new LaunchConfig(logDirectory);
+        Config = new TestConfig(Path.Combine(logDirectory, "config.yml"));
+        Config = Config.Load();
     }
     
     /// <summary>
@@ -39,12 +40,12 @@ public class Server
     /// Процесс игры
     /// </summary>
     public Process GameProcess { get; private set; }
-    
+
     /// <summary>
     /// Конфиг
     /// </summary>
-    public LaunchConfig Config { get; private set; }
-    
+    public TestConfig Config { get; private set; }
+
     /// <summary>
     /// Команды
     /// </summary>
@@ -176,10 +177,10 @@ public class Server
     public string GameLogDirectoryFile { get; private set; }
     
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.Storage.ServerStopTimeout.Value;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.ServerStopTimeout;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.Storage.ServerRestartTimeout.Value;
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
     
@@ -322,11 +323,11 @@ public class Server
                 Program.Logger.Error(nameof(Start), exception.Message);
 
                 // If the server should try to start up again
-                if (Config.Storage.ServerStartRetry.Value)
+                if (Config.ServerStartRetry)
                 {
                     shouldRestart = true;
 
-                    var waitDelayMs = Config.Storage.ServerStartRetryDelay.Value;
+                    var waitDelayMs = Config.ServerStartRetryDelay;
 
                     if (waitDelayMs > 0)
                     {
