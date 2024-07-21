@@ -11,7 +11,9 @@ namespace ServerLauncher.Server;
 
 public class Server
 {
-    public static List<Feature> Features { get; } = new();
+    public static IEnumerable<Feature> Features => _features;
+
+    private static List<Feature> _features = new();
     
     public Server(string id, uint port, string logDirectory, string[] arguments)
     {
@@ -501,7 +503,7 @@ public class Server
             "-nographics",
             "-silent-crashes",
             "-nodedicateddelete",
-            $"-id{Process.GetCurrentProcess().Id}",
+            $"-id{Environment.ProcessId}",
             $"-console{port}",
             $"-port{Port}"
         };
