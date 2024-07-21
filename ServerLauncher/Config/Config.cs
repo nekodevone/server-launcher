@@ -2,7 +2,7 @@
 
 namespace ServerLauncher.Config
 {
-    public sealed class TestConfig : ConfigBase<TestConfig>
+    public sealed class Config : ConfigBase<Config>
     {
         [YamlMember(Description = "Местоположение по умолчанию игры для хранения файлов конфигурации (директория)")]
         public string ConfigLocation { get; set; } = string.Empty;
@@ -55,11 +55,11 @@ namespace ServerLauncher.Config
         [YamlMember(Description = "Servers Folder")]
         public string ServersFolder { get; set; } = "servers";
 
-        public TestConfig(string filePath) : base(filePath)
+        public Config(string filePath) : base(filePath)
         {
         }
 
-        public TestConfig()
+        public Config()
         {
         }
     }

@@ -22,7 +22,7 @@ public class Server
         LogDirectory = logDirectory;
         Arguments = arguments;
 
-        Config = new TestConfig(Path.Combine(logDirectory, "config.yml"));
+        Config = new Config.Config(Path.Combine(logDirectory, "config.yml"));
         Config = Config.Load();
     }
     
@@ -44,7 +44,7 @@ public class Server
     /// <summary>
     /// Конфиг
     /// </summary>
-    public TestConfig Config { get; private set; }
+    public Config.Config Config { get; private set; }
 
     /// <summary>
     /// Команды
