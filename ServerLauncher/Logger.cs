@@ -5,7 +5,7 @@ namespace ServerLauncher
     /// <summary>
     /// Класс логгера
     /// </summary>
-    public class Logger
+    public class Logger : IDisposable
     {
         /// <summary>
         /// Инициализирует класс Logger
@@ -77,10 +77,7 @@ namespace ServerLauncher
         /// <summary>
         /// Очистка
         /// </summary>
-        internal void Dispose()
-        {
-            _streamWriter.Dispose();
-        }
+        public void Dispose() => GC.SuppressFinalize(this);
 
         /// <summary>
         /// Добавляет к сообщению время, выводит в консоль и записывает в файл 
