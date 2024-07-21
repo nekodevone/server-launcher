@@ -11,11 +11,11 @@ namespace ServerLauncher
         /// Инициализирует класс Logger
         /// </summary>
         /// <param name="directory">Путь где будет находится файл логов</param>
-        public  Logger(string directory)
+        public Logger(string directory)
         {
             if (!Directory.Exists(directory))
             {
-                Directory.CreateDirectory(directory);
+                Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
             _path = Path.Combine(directory, $"{Utilities.DateTime}.log");
@@ -23,7 +23,7 @@ namespace ServerLauncher
             _streamWriter = File.AppendText(_path);
         }
 
-        private StreamWriter _streamWriter;
+        private readonly StreamWriter _streamWriter;
         
         private readonly string _path;
 
@@ -32,9 +32,9 @@ namespace ServerLauncher
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
-        public void Log(string tag, string message, ConsoleColor consoleColor = ConsoleColor.Blue)
+        public void Log(object tag, object message)
         {
-            Send($"[INFO] [{tag}] {message}", consoleColor);
+            Send($"[INFO] [{tag}] {message}", ConsoleColor.Blue);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace ServerLauncher
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
-        public void Debug(string tag, string message)
+        public void Debug(object tag, object message)
         {
             Send($"[INFO] [{tag}] {message}", ConsoleColor.DarkGray);
         }
@@ -52,7 +52,7 @@ namespace ServerLauncher
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
-        public void Error(string tag, string message)
+        public void Error(object tag, object message)
         {
             Send($"[ERROR] [{tag}] {message}", ConsoleColor.Red);
         }
@@ -62,9 +62,14 @@ namespace ServerLauncher
         /// </summary>
         /// <param name="tag"></param>
         /// <param name="message"></param>
-        public void Warn(string tag, string message)
+        public void Warn(object tag, object message)
         {
             Send($"[WARN] [{tag}] {message}", ConsoleColor.Yellow);
+        }
+
+        public void Message(object tag, object message, ConsoleColor consoleColor)
+        {
+            Send($"[{tag}] {message}", consoleColor);
         }
 
         /// <summary>

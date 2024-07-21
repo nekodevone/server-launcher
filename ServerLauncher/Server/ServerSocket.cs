@@ -7,7 +7,7 @@ namespace ServerLauncher.Server;
 
 public class ServerSocket : IDisposable
 {
-    public static readonly UTF8Encoding Encoding = new(false, true);
+    public static readonly UTF8Encoding Encoding = new(false, false);
 
     public ServerSocket(int port = 0)
     {
@@ -15,6 +15,7 @@ public class ServerSocket : IDisposable
     }
 
     public event EventHandler<MessageEventArgs> OnReceiveMessage;
+    
     public event EventHandler<byte> OnReceiveAction;
     
     public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;

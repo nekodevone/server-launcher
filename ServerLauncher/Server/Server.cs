@@ -1,28 +1,51 @@
 using System.Diagnostics;
+using System.Reflection;
 using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
 using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
+using ServerLauncher.Server.Features;
+using ServerLauncher.Server.Features.Attributes;
 using ServerLauncher.Server.Handlers;
 
 namespace ServerLauncher.Server;
 
 public class Server
 {
-    public static IEnumerable<Feature> Features => _features;
-
-    private static List<Feature> _features = new();
-    
     public Server(string id, uint port, string logDirectory, string[] arguments)
     {
         Id = id;
         Port = port;
         LogDirectory = logDirectory;
         Arguments = arguments;
-
+        
         Config = new LaunchConfig(logDirectory);
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var features = assembly.GetTypes().Where(type => type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
+
+            foreach (var feature in features)
+            {
+                try
+                {
+                    var instance = Activator.CreateInstance(feature, this);
+
+                    if (instance is not ServerFeature serverFeature)
+                    {
+                        continue;
+                    }
+                
+                    RegisterFeature(serverFeature);
+                }
+                catch (Exception exception)
+                {
+                    Error(exception.Message);
+                }
+            }
+        }
     }
     
     /// <summary>
@@ -44,11 +67,26 @@ public class Server
     /// Конфиг
     /// </summary>
     public LaunchConfig Config { get; private set; }
-    
+
+    /// <summary>
+    /// Содержит настройки сервера
+    /// </summary>
+    public ConfigStorage ConfigStorage => Config.Storage;
+
+    /// <summary>
+    /// Фичи
+    /// </summary>
+    public IEnumerable<ServerFeature> Features => _features;
+
     /// <summary>
     /// Команды
     /// </summary>
-    public Dictionary<string, ICommand> Commands { get; } = new();
+    public Dictionary<string, ICommand> Commands => _commands;
+
+    /// <summary>
+    /// Лист методов фич
+    /// </summary>
+    public List<IEventServerTick> Ticks => _ticks;
 
     /// <summary>
     /// Запущен ли процесс игры
@@ -180,10 +218,14 @@ public class Server
 
     public bool CheckRestartTimeout =>
         (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.Storage.ServerRestartTimeout.Value;
+    
+    private List<ServerFeature> _features = new();
+    
+    private static Dictionary<string, ICommand> _commands = new();
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
     
-    private readonly List<IEventServerTick> _tick = new();
+    private readonly List<IEventServerTick> _ticks = new();
     
     private DateTime _initStopTimeoutTime;
     private DateTime _initRestartTimeoutTime;
@@ -209,7 +251,7 @@ public class Server
 
                 Log($"{Id} is executing...");
 
-                var socket = new ServerSocket();
+                var socket = new ServerSocket((int)Port);
                 socket.Connect();
 
                 Socket = socket;
@@ -231,8 +273,7 @@ public class Server
                 SupportModFeatures = ModFeatures.None;
 
                 ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
-
-                // Start the input reader
+                
                 var inputHandlerCancellation = new CancellationTokenSource();
                 Task inputHandler = null;
 
@@ -243,13 +284,15 @@ public class Server
                 }
 
                 var outputHandler = new OutputHandler(this);
-                // Assign the socket events to the OutputHandler
+
                 socket.OnReceiveMessage += outputHandler.HandleMessage;
                 socket.OnReceiveAction += outputHandler.HandleAction;
 
                 GameProcess = Process.Start(startInfo);
 
                 Status = ServerStatusType.Running;
+                
+                EnableFeatures();
 
                 MainLoop();
 
@@ -284,7 +327,7 @@ public class Server
                     GameProcess?.Dispose();
                     GameProcess = null;
 
-                    if (inputHandler != null)
+                    if (inputHandler is not null)
                     {
                         inputHandlerCancellation.Cancel();
                         try
@@ -293,7 +336,7 @@ public class Server
                         }
                         catch (Exception)
                         {
-                            // Task was cancelled or disposed, this is fine since we're waiting for that
+                            //Задача была отменена или удалена. Это нормально, мы этого ждем.
                         }
 
                         inputHandler.Dispose();
@@ -320,8 +363,7 @@ public class Server
             {
                 Error(exception.Message);
                 Program.Logger.Error(nameof(Start), exception.Message);
-
-                // If the server should try to start up again
+                
                 if (Config.Storage.ServerStartRetry.Value)
                 {
                     shouldRestart = true;
@@ -356,12 +398,12 @@ public class Server
     {
         if (!IsRunning)
         {
-            //throw new Exceptions.ServerNotRunningException();
+            throw new ServerNotRunningException();
         }
 
         SetRestartStatus();
 
-        if ((killGame || !SendMessage("SOFTRESTART")) && IsGameProcessRunning)
+        if ((killGame || !SendSocketMessage("SOFTRESTART")) && IsGameProcessRunning)
             GameProcess.Kill();
     }
     
@@ -377,12 +419,12 @@ public class Server
     {
         if (!IsRunning)
         {
-            //throw new Exceptions.ServerNotRunningException();
+            throw new ServerNotRunningException();
         }
 
         SetStopStatus(killGame);
 
-        if ((killGame || !SendMessage("QUIT")) && IsGameProcessRunning)
+        if ((killGame || !SendSocketMessage("QUIT")) && IsGameProcessRunning)
         {
             GameProcess.Kill();
         }
@@ -401,21 +443,32 @@ public class Server
         return true;
     }
 
-    public void Log(string message, ConsoleColor consoleColor = ConsoleColor.Blue)
+    public void Log(object message)
     {
-        Program.Logger.Log("SERVER", message, consoleColor);
+        Program.Logger.Log("SERVER", message);
     }
     
-    public void Error(string message)
+    public void Error(object message)
     {
         Program.Logger.Error("SERVER", message);
     }
+
+    public void Warn(object message)
+    {
+        Program.Logger.Warn("SERVER", message);
+    }
+
+    public void Debug(object message)
+    {
+        Program.Logger.Debug("SERVER", message);
+    }
+
+    public void Message(object message, ConsoleColor consoleColor)
+    {
+        Program.Logger.Message("SERVER", message, consoleColor);
+    }
     
-    /// <summary>
-    /// Sends the string <paramref name="message" /> to the SCP: SL server process.
-    /// </summary>
-    /// <param name="message"></param>
-    public bool SendMessage(string message)
+    public bool SendSocketMessage(string message)
     {
         if (Socket is null || !Socket.IsConnected)
         {
@@ -427,11 +480,63 @@ public class Server
         return true;
     }
 
+    public void EnableFeatures()
+    {
+        foreach (var feature in _features)
+        {
+            feature.Enabled();
+            feature.ConfigReloaded();
+        }
+    }
+
+    public void RegisterFeature(ServerFeature serverFeature)
+    {
+        switch (serverFeature)
+        {
+            case ICommand command:
+            {
+                var commandKey = command.Command.ToLower().Trim();
+
+                // If the command was already registered
+                if (_commands.ContainsKey(commandKey))
+                {
+                    var message =
+                        $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
+
+                    Program.Logger.Debug(nameof(Server), message);
+                    Log(message);
+                }
+                else
+                {
+                    _commands.Add(commandKey, command);
+                }
+
+                break;
+            }
+            case IEventServerTick serverTick:
+                _ticks.Add(serverTick);
+                break;
+        }
+                    
+        _features.Add(serverFeature);
+    }
+
     public void ForEachHandler<T>(Action<T> action) where T : IEvent
     {
-        foreach (var feature in Features)
-            if (feature is T eventHandler)
-                action.Invoke(eventHandler);
+        foreach (var feature in _features)
+        {
+            if (!feature.IsEnabled)
+            {
+                continue;
+            }
+            
+            if (feature is not T eventHandler)
+            {
+                continue;
+            }
+
+            action.Invoke(eventHandler);
+        }
     }
     
     private void MainLoop()
@@ -442,15 +547,24 @@ public class Server
         
         while (IsGameProcessRunning)
         {
-            foreach (var tickEvent in _tick)
+            foreach (var tickEvent in _ticks)
             {
-                tickEvent.OnServerTick();
+                try
+                {
+                    tickEvent.OnServerTick();
+                }
+                catch (Exception exception)
+                {
+                    Error(exception.ToString());
+                    Error("Tick event removed for this feature.");
+
+                    _ticks.Remove(tickEvent);
+                }
             }
 
             timer.Stop();
-
-            // Wait the delay per tick (calculating how long the tick took and compensating)
-            //Thread.Sleep(Math.Max(ServerConfig.MultiAdminTickDelay.Value - timer.Elapsed.Milliseconds, 0));
+            
+            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Default - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 

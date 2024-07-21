@@ -43,8 +43,6 @@ public class Config
         }
         
         ConfigPath = path;
-        
-        Console.WriteLine(ConfigPath);
 
         try
         {
