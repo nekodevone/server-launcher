@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Reflection;
-using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
@@ -10,6 +7,7 @@ using ServerLauncher.Server.Features;
 using ServerLauncher.Server.Features.Attributes;
 using ServerLauncher.Server.Handlers;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace ServerLauncher.Server;
 
@@ -17,7 +15,7 @@ public class Server
 {
     private readonly uint? port;
 
-    public Server(string id, uint port, string logDirectory, string[] arguments)
+    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
         Id = id;
         ServerDir = string.IsNullOrEmpty(Id)
@@ -82,11 +80,6 @@ public class Server
     /// Конфиг
     /// </summary>
     public Config.Config Config { get; private set; }
-
-    /// <summary>
-    /// Содержит настройки сервера
-    /// </summary>
-    public ConfigStorage ConfigStorage => Config.Storage;
 
     /// <summary>
     /// Фичи
@@ -246,9 +239,13 @@ public class Server
     public bool CheckRestartTimeout =>
         (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
 
+    private List<ServerFeature> _features = new();
+
+    private static Dictionary<string, ICommand> _commands = new();
+
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
 
-    private readonly List<IEventServerTick> _tick = new();
+    private readonly List<IEventServerTick> _ticks = new();
 
     private DateTime _initStopTimeoutTime;
     private DateTime _initRestartTimeoutTime;
@@ -588,7 +585,7 @@ public class Server
 
             timer.Stop();
             
-            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Default - timer.Elapsed.Milliseconds, 0));
+            Thread.Sleep(Math.Max(Config.MultiAdminTickDelay - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 
@@ -636,8 +633,8 @@ public class Server
     {
         foreach (var feature in Features)
         {
-            feature.Initialize();
-            feature.OnConfigReload();
+            feature.Enabled();
+            feature.ConfigReloaded();
         }
     }
 
