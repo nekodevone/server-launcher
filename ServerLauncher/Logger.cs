@@ -20,13 +20,6 @@ namespace ServerLauncher
 
             _path = Path.Combine(directory, $"{Utilities.DateTime}.log");
 
-            if (File.Exists(_path))
-            {
-                _streamWriter = File.AppendText(_path);
-                
-                return;
-            }
-            
             _streamWriter = File.AppendText(_path);
         }
 
