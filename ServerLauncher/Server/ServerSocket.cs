@@ -107,17 +107,17 @@ public class ServerSocket : IDisposable
             {
                 OnReceiveAction?.Invoke(this, messageType);
             }
-            
+
             var lengthBytesRead = await _networkStream.ReadAsync(intBuffer, 0, IntSize, _disposeCancellationSource.Token);
-            
+
             if (lengthBytesRead != IntSize)
             {
                 Disconnect();
                 break;
             }
-            
+
             var length = (intBuffer[0] << 24) | (intBuffer[1] << 16) | (intBuffer[2] << 8) | intBuffer[3];
-            
+
             switch (length)
             {
                 case 0:
@@ -139,7 +139,6 @@ public class ServerSocket : IDisposable
             }
 
             var message = Encoding.GetString(messageBuffer, 0, length);
-
             OnReceiveMessage?.Invoke(this, new MessageEventArgs(message, messageType));
         }
     }

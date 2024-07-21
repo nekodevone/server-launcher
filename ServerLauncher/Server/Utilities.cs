@@ -192,6 +192,16 @@ public static class Utilities
     }
     
     /// <summary>
+    /// Возвращает полный путь для указанного пути
+    /// </summary>
+    /// <param name="path">Путь</param>
+    /// <returns>Полный путь</returns>
+    public static string GetFullPathSafe(string path)
+    {
+        return string.IsNullOrWhiteSpace(path) ? null : Path.GetFullPath(path);
+    }
+    
+    /// <summary>
     /// Превращает строку аргументов в массив из аргументов
     /// </summary>
     /// <param name="inString"></param>

@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Reflection;
-using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
@@ -9,19 +6,35 @@ using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features;
 using ServerLauncher.Server.Features.Attributes;
 using ServerLauncher.Server.Handlers;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace ServerLauncher.Server;
 
 public class Server
 {
-    public Server(string id, uint port, string logDirectory, string[] arguments)
+    private readonly uint? port;
+
+    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
         Id = id;
-        Port = port;
-        LogDirectory = logDirectory;
-        Arguments = arguments;
-        
-        Config = new LaunchConfig(logDirectory);
+        ServerDir = string.IsNullOrEmpty(Id)
+            ? null
+            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ConfigLocation, Id));
+
+        ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
+                         Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
+                         Utilities.GetFullPathSafe(ServerDir);
+
+        this.port = port;
+
+        Arguments = args;
+
+        Config = new Config.Config(Path.Combine(this.ConfigLocation, "config.yml"));
+        Config = Config.Load();
+
+        LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
+            Config.LogLocation));
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
@@ -37,7 +50,7 @@ public class Server
                     {
                         continue;
                     }
-                
+
                     RegisterFeature(serverFeature);
                 }
                 catch (Exception exception)
@@ -47,31 +60,26 @@ public class Server
             }
         }
     }
-    
+
     /// <summary>
     /// Айди
     /// </summary>
     public string Id { get; }
-    
+
     /// <summary>
     /// Сокет
     /// </summary>
     public ServerSocket Socket { get; private set; }
-    
+
     /// <summary>
     /// Процесс игры
     /// </summary>
     public Process GameProcess { get; private set; }
-    
+
     /// <summary>
     /// Конфиг
     /// </summary>
-    public LaunchConfig Config { get; private set; }
-
-    /// <summary>
-    /// Содержит настройки сервера
-    /// </summary>
-    public ConfigStorage ConfigStorage => Config.Storage;
+    public Config.Config Config { get; private set; }
 
     /// <summary>
     /// Фичи
@@ -103,22 +111,32 @@ public class Server
             return !GameProcess.HasExited;
         }
     }
-    
+
+    /// <summary>
+    /// Папка сервера
+    /// </summary>
+    public string ServerDir { get; private set; }
+
     /// <summary>
     /// Путь к логам
     /// </summary>
     public string LogDirectory { get; private set; }
-    
+
+    /// <summary>
+    /// Локация конфига
+    /// </summary>
+    public string ConfigLocation { get; }
+
     /// <summary>
     /// Порт
     /// </summary>
-    public uint Port { get; }
+    public uint Port => port ?? Config.Port;
 
     /// <summary>
     /// Аргументы
     /// </summary>
     public string[] Arguments { get; }
-    
+
     /// <summary>
     /// Поддерживаемые фичи
     /// </summary>
@@ -136,7 +154,7 @@ public class Server
             _serverStatus = value;
         }
     }
-    
+
     /// <summary>
     /// Статус сервера
     /// </summary>
@@ -152,7 +170,7 @@ public class Server
     /// Запущен ли
     /// </summary>
     public bool IsRunning => !IsStopped;
-    
+
     /// <summary>
     /// Включен ли
     /// </summary>
@@ -168,17 +186,17 @@ public class Server
     /// </summary>
     public bool IsStopping => Status is ServerStatusType.Stopping || Status is ServerStatusType.ForceStopping ||
                               Status is ServerStatusType.Restarting;
-    
+
     /// <summary>
     /// Загружается ли
     /// </summary>
     public bool IsLoading { get; set; }
-    
+
     /// <summary>
     /// Время запуска
     /// </summary>
     public DateTime StartTime { get; private set; }
-    
+
     /// <summary>
     /// Время запуска в виде строки
     /// </summary>
@@ -198,35 +216,37 @@ public class Server
             lock (this)
             {
                 LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
-                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "SCP");
+                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile)
+                    ? null
+                    : string.Format(LogDirectoryFile, "SCP");
             }
         }
     }
-    
+
     /// <summary>
     /// Путь к файлу логов
     /// </summary>
     public string LogDirectoryFile { get; private set; }
-    
+
     /// <summary>
     /// Путь к файлу логов игры
     /// </summary>
     public string GameLogDirectoryFile { get; private set; }
-    
+
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.Storage.ServerStopTimeout.Value;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.ServerStopTimeout;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.Storage.ServerRestartTimeout.Value;
-    
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
+
     private List<ServerFeature> _features = new();
-    
+
     private static Dictionary<string, ICommand> _commands = new();
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
-    
+
     private readonly List<IEventServerTick> _ticks = new();
-    
+
     private DateTime _initStopTimeoutTime;
     private DateTime _initRestartTimeoutTime;
     private string _startDateTime;
@@ -244,10 +264,10 @@ public class Server
         {
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
-            
+
             try
             {
-//Тут будет вызов в конфиге чё нибудь
+                InitFeatures();
 
                 Log($"{Id} is executing...");
 
@@ -363,12 +383,13 @@ public class Server
             {
                 Error(exception.Message);
                 Program.Logger.Error(nameof(Start), exception.Message);
-                
-                if (Config.Storage.ServerStartRetry.Value)
+
+                // If the server should try to start up again
+                if (Config.ServerStartRetry)
                 {
                     shouldRestart = true;
 
-                    var waitDelayMs = Config.Storage.ServerStartRetryDelay.Value;
+                    var waitDelayMs = Config.ServerStartRetryDelay;
 
                     if (waitDelayMs > 0)
                     {
@@ -385,7 +406,7 @@ public class Server
                     Error("Startup failed! Exiting...");
                 }
             }
-        } while (shouldRestart) ;
+        } while (shouldRestart);
     }
 
     public void SetRestartStatus()
@@ -406,7 +427,7 @@ public class Server
         if ((killGame || !SendSocketMessage("SOFTRESTART")) && IsGameProcessRunning)
             GameProcess.Kill();
     }
-    
+
     public void SetStopStatus(bool killGame = false)
     {
         _initStopTimeoutTime = DateTime.Now;
@@ -544,7 +565,7 @@ public class Server
         // Creates and starts a timer
         var timer = new Stopwatch();
         timer.Restart();
-        
+
         while (IsGameProcessRunning)
         {
             foreach (var tickEvent in _ticks)
@@ -564,7 +585,7 @@ public class Server
 
             timer.Stop();
             
-            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Default - timer.Elapsed.Milliseconds, 0));
+            Thread.Sleep(Math.Max(Config.MultiAdminTickDelay - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 
@@ -584,19 +605,19 @@ public class Server
             {
                 continue;
             }
-            
+
             Error("Force stopping the server process...");
             Stop(true);
         }
     }
-    
+
     /// <summary>
     /// Устанавливает пути к файлам логов
     /// </summary>
     private void SetLogsDirectories()
     {
         var time = StartTime.ToString();
-            
+
         var directory = string.IsNullOrEmpty(time) || string.IsNullOrEmpty(LogDirectory)
             ? null
             : $"{Path.Combine(LogDirectory.EscapeFormat(), time)}_{{0}}_log_{Port}.txt";
@@ -607,7 +628,16 @@ public class Server
             GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
         }
     }
-    
+
+    private void InitFeatures()
+    {
+        foreach (var feature in Features)
+        {
+            feature.Enabled();
+            feature.ConfigReloaded();
+        }
+    }
+
     private IEnumerable<string> GetArguments(int port)
     {
         var arguments = new List<string>
@@ -621,8 +651,7 @@ public class Server
             $"-console{port}",
             $"-port{Port}"
         };
-        
-        //кто это читает, добавь || ServerConfig.NoLog.Value
+
         if (string.IsNullOrEmpty(GameLogDirectoryFile))
         {
             arguments.Add("-nolog");
@@ -643,6 +672,15 @@ public class Server
             arguments.Add("-logFile");
             arguments.Add(GameLogDirectoryFile);
         }
+
+        if (!string.IsNullOrEmpty(ConfigLocation))
+        {
+            arguments.Add("-configpath");
+            arguments.Add(ConfigLocation);
+        }
+
+        // Add custom arguments
+        arguments.AddRange(Arguments);
 
         return arguments;
     }
