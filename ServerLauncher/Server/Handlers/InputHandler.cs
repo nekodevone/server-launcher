@@ -58,7 +58,7 @@ public static class InputHandler
 
                 if (string.IsNullOrEmpty(message)) continue;
 
-                server.Log($">>> {message}", ConsoleColor.DarkMagenta);
+                server.Message($">>> {message}", ConsoleColor.DarkMagenta);
 
                 var separatorIndex = message.IndexOfAny(Separator);
                 var commandName = (separatorIndex < 0 ? message : message.Substring(0, separatorIndex)).ToLower().Trim();
@@ -67,9 +67,7 @@ public static class InputHandler
 
                 var callServer = true;
                 
-                server.Commands.TryGetValue(commandName, out var command);
-                
-                if (command != null)
+                if (server.Commands.TryGetValue(commandName, out var command))
                 {
                     try
                     {
@@ -84,22 +82,17 @@ public static class InputHandler
                     callServer = command.IsPassToGame;
                 }
 
-                if (callServer) server.SendMessage(message);
+                if (callServer) server.SendSocketMessage(message);
             }
 
             ResetInputParams();
         }
         catch (TaskCanceledException)
         {
-            // Exit the Task immediately if cancelled
+            
         }
     }
-
-    /// <summary>
-    /// Waits until <see cref="Console.KeyAvailable"/> returns true.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token to check for cancellation.</param>
-    /// <exception cref="TaskCanceledException">The task has been canceled.</exception>
+    
     public static async Task WaitForKey(CancellationToken cancellationToken)
     {
         while (!Console.KeyAvailable)

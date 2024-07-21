@@ -15,6 +15,7 @@ public class ServerSocket : IDisposable
     }
 
     public event EventHandler<MessageEventArgs> OnReceiveMessage;
+    
     public event EventHandler<byte> OnReceiveAction;
     
     public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;
