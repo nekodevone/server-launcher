@@ -564,7 +564,7 @@ public class Server
 
             timer.Stop();
             
-            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Value - timer.Elapsed.Milliseconds, 0));
+            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Default - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 

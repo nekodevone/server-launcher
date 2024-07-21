@@ -7,7 +7,7 @@ namespace ServerLauncher.Server;
 
 public class ServerSocket : IDisposable
 {
-    public static readonly UTF8Encoding Encoding = new(false, true);
+    public static readonly UTF8Encoding Encoding = new(false, false);
 
     public ServerSocket(int port = 0)
     {

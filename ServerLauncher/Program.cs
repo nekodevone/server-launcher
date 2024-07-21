@@ -14,8 +14,10 @@ public static class Program
         {
             new Server.Server("test2", 7777, Directory.GetCurrentDirectory(), new string[0]).Start();
         }
-        catch
+        catch (Exception exception)
         {
+            Logger.Error("SERVER", exception.ToString());
+            
             Logger.Dispose();
         }
     }
