@@ -267,8 +267,6 @@ public class Server
 
             try
             {
-                InitFeatures();
-
                 Log($"{Id} is executing...");
 
                 var socket = new ServerSocket((int)Port);
@@ -626,15 +624,6 @@ public class Server
         {
             LogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "MA");
             GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
-        }
-    }
-
-    private void InitFeatures()
-    {
-        foreach (var feature in Features)
-        {
-            feature.Enabled();
-            feature.ConfigReloaded();
         }
     }
 
