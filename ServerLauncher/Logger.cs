@@ -1,4 +1,6 @@
-﻿namespace ServerLauncher
+﻿using ServerLauncher.Utility;
+
+namespace ServerLauncher
 {
     /// <summary>
     /// Класс логгера
@@ -16,7 +18,7 @@
                 Directory.CreateDirectory(directory);
             }
 
-            _path = Path.Combine(directory, "logs.log");
+            _path = Path.Combine(directory, $"{Utilities.DateTime}.log");
 
             if (File.Exists(_path))
             {
@@ -24,8 +26,7 @@
                 
                 return;
             }
-
-            File.Create(_path);
+            
             _streamWriter = File.AppendText(_path);
         }
 

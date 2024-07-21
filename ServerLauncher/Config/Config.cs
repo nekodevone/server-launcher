@@ -16,7 +16,7 @@ public class Config
         {
             try
             {
-                internalConfigPath = Utils.GetFullPathSafe(value);
+                internalConfigPath = Utilities.GetFullPathSafe(value);
             }
             catch (Exception)
             {

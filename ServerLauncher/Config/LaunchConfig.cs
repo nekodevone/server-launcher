@@ -6,7 +6,7 @@ namespace ServerLauncher.Config;
 
 public class LaunchConfig : InheritableConfigRegister
 {
-    public static readonly string GlobalConfigFilePath = Utils.GetFullPathSafe(ConfigFileName);
+    public static readonly string GlobalConfigFilePath = Utilities.GetFullPathSafe(ConfigFileName);
 
     public static readonly LaunchConfig GlobalConfig = new(GlobalConfigFilePath, null);
 

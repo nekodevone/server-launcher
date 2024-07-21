@@ -1,6 +1,6 @@
 ﻿namespace ServerLauncher.Utility;
 
-public static class Utils
+public static class Utilities
 {
     public static string DateTime => System.DateTime.Now.ToString("yyyy-MM-dd_HH_mm_ss");
 
