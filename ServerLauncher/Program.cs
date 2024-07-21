@@ -4,7 +4,7 @@ public static class Program
 {
     public static Logger Logger { get; private set; } = new(Directory.GetCurrentDirectory());
 
-    public static Version Version { get; } = new Version(1, 0, 0);
+    public static Version Version { get; } = new(1, 0, 0);
 
     public static Config.Config GlobalConfig = new(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
 
@@ -18,8 +18,10 @@ public static class Program
         {
             new Server.Server("test2", 7777, Directory.GetCurrentDirectory(), new string[0]).Start();
         }
-        catch
+        catch (Exception exception)
         {
+            Logger.Error("SERVER", exception.ToString());
+            
             Logger.Dispose();
         }
     }

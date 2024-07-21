@@ -141,7 +141,7 @@ public class OutputHandler
 				// Don't print any MultiAdmin events
 				return;
 			}
-
+			
 			server.Log(message.Message);
 		}
 
