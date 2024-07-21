@@ -74,13 +74,10 @@ namespace ServerLauncher.Config
         {
             var serializer = new SerializerBuilder().Build();
             var yaml = serializer.Serialize(this);
-            Program.Logger.Log("CONFIG", "1");
 
             if (yaml != null)
             {
-                Program.Logger.Log("CONFIG", FilePath);
                 File.WriteAllText(FilePath, yaml, Encoding.UTF8);
-                Program.Logger.Log("CONFIG", "3");
             }
         }
     }

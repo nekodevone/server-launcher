@@ -1,6 +1,4 @@
-﻿using ServerLauncher.Utility;
-
-namespace ServerLauncher;
+﻿namespace ServerLauncher;
 
 public static class Program
 {
