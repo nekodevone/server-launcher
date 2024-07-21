@@ -1,70 +1,87 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using ServerLauncher.Server.EventArgs;
+using ServerLauncher.Server.Handlers.Enums;
 
 namespace ServerLauncher.Server;
 
 public class ServerSocket : IDisposable
 {
+    /// <summary>
+    ///     Размер инта в байтах
+    /// </summary>
+    private const int IntSize = sizeof(int);
+
     public static readonly UTF8Encoding Encoding = new(false, false);
+
+    /// <summary>
+    ///     Отменитель
+    /// </summary>
+    private readonly CancellationTokenSource _disposeCancellationSource = new();
+
+    /// <summary>
+    ///     Слушатель
+    /// </summary>
+    private readonly TcpListener _listener;
+
+    /// <summary>
+    ///     Клиент
+    /// </summary>
+    private TcpClient _client;
+
+    /// <summary>
+    ///     Был ли диспоснут
+    /// </summary>
+    private readonly bool _isDisposed = false;
+
+    /// <summary>
+    ///     Сетевой поток
+    /// </summary>
+    private NetworkStream _networkStream;
 
     public ServerSocket(int port = 0)
     {
         _listener = new TcpListener(new IPEndPoint(IPAddress.Loopback, port));
     }
 
-    public event EventHandler<MessageEventArgs> OnReceiveMessage;
-    
-    public event EventHandler<byte> OnReceiveAction;
-    
     public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;
-    
-    public bool IsConnected => _client?.Connected ?? false;
-    
-    /// <summary>
-    /// Отменитель
-    /// </summary>
-    private readonly CancellationTokenSource _disposeCancellationSource = new CancellationTokenSource();
-    
-    /// <summary>
-    /// Был ли диспоснут
-    /// </summary>
-    private bool _isDisposed = false;
 
-    /// <summary>
-    /// Слушатель
-    /// </summary>
-    private readonly TcpListener _listener;
-    
-    /// <summary>
-    /// Клиент
-    /// </summary>
-    private TcpClient _client;
-    
-    /// <summary>
-    /// Сетевой поток
-    /// </summary>
-    private NetworkStream _networkStream;
-    
-    /// <summary>
-    /// Размер инта в байтах
-    /// </summary>
-    private const int IntSize = sizeof(int);
+    public bool IsConnected => _client?.Connected ?? false;
+
+    public void Dispose()
+    {
+        if (_isDisposed) return;
+
+        _disposeCancellationSource.Cancel();
+        _disposeCancellationSource.Dispose();
+
+        _networkStream?.Close();
+        _client?.Close();
+        _listener?.Stop();
+    }
+
+    public event EventHandler<MessageEventArgs> OnReceiveMessage;
+
+    public event EventHandler<byte> OnReceiveAction;
 
     public void Connect()
     {
-        if (_isDisposed)
-        {
-            throw new ObjectDisposedException(nameof(ServerSocket));
-        }
-            
+        if (_isDisposed) throw new ObjectDisposedException(nameof(ServerSocket));
+
         _listener.Start();
         _listener.BeginAcceptTcpClient(result =>
         {
             try
             {
                 _client = _listener.EndAcceptTcpClient(result);
+                _client.NoDelay = true;
+
+                _client.ReceiveBufferSize = Server.TxBufferSize;
+                _client.SendBufferSize = Server.RxBufferSize;
+
                 _networkStream = _client.GetStream();
 
                 Task.Run(MessageListener, _disposeCancellationSource.Token);
@@ -77,7 +94,6 @@ public class ServerSocket : IDisposable
             {
                 Program.Logger.Error(nameof(Connect), e.ToString());
             }
-            
         }, _listener);
     }
 
@@ -85,64 +101,94 @@ public class ServerSocket : IDisposable
     {
         Dispose();
     }
-    
+
     public async void MessageListener()
     {
-        var typeBuffer = new byte[1];
-        var intBuffer = new byte[IntSize];
+        // Взято из LocalAdmin
+        const int offset = sizeof(int);
+        var codeBuffer = new byte[1];
+        var lengthBuffer = new byte[offset];
+        var restartReceived = false;
 
-        while (!_isDisposed && _networkStream is not null)
+        while (true)
         {
-            var messageTypeBytesRead = await _networkStream.ReadAsync(typeBuffer, 0, 1, _disposeCancellationSource.Token);
+            // Задержка 10 чтобы не было бесконечно лупа.
+            await Task.Delay(10);
 
-            if (messageTypeBytesRead <= 0)
+            // Если диспоснут или нет сетевого потока, то выходим из цикла.
+            if (_isDisposed || _networkStream is null)
             {
-                Disconnect();
-                break;
+                return;
+            }
+            
+            // Если нет данных, то пропускаем итерацию.
+            if (!_networkStream.DataAvailable)
+            {
+                continue;
             }
 
-            var messageType = typeBuffer[0];
+            // Читаем длину сообщения.
+            var readAmount = await _networkStream.ReadAsync(codeBuffer.AsMemory(0, 1));
 
-            if (messageType >= 16)
+            if (readAmount == 0)
             {
-                OnReceiveAction?.Invoke(this, messageType);
+                continue;
             }
 
-            var lengthBytesRead = await _networkStream.ReadAsync(intBuffer, 0, IntSize, _disposeCancellationSource.Token);
-
-            if (lengthBytesRead != IntSize)
+            if (codeBuffer[0] < 16)
             {
-                Disconnect();
-                break;
+                readAmount = await _networkStream.ReadAsync(lengthBuffer.AsMemory(0, offset));
+
+                if (readAmount < 4)
+                {
+                    continue;
+                }
+
+                var length = MemoryMarshal.Cast<byte, int>(lengthBuffer)[0];
+                var buffer = ArrayPool<byte>.Shared.Rent(length);
+
+                while (_client.Available < length)
+                    await Task.Delay(20);
+
+                readAmount = await _networkStream.ReadAsync(buffer.AsMemory(0, length));
+
+                if (readAmount != length)
+                {
+                    continue;
+                }
+
+                var message = $"{codeBuffer[0]:X}{Encoding.GetString(buffer, 0, length)}";
+                ArrayPool<byte>.Shared.Return(buffer);
+
+                Program.Logger.Log("SERVER", message);
             }
-
-            var length = (intBuffer[0] << 24) | (intBuffer[1] << 16) | (intBuffer[2] << 8) | intBuffer[3];
-
-            switch (length)
+            else
             {
-                case 0:
-                    OnReceiveMessage?.Invoke(this, new MessageEventArgs("", messageType));
-                    break;
-                case < 0:
-                    OnReceiveMessage?.Invoke(this, new MessageEventArgs(null, messageType));
-                    break;
+                switch ((OutputCodes)codeBuffer[0])
+                {
+                    case OutputCodes.RoundRestart:
+                        break;
+                    case OutputCodes.IdleEnter:
+                        break;
+                    case OutputCodes.IdleExit:
+                        break;
+                    case OutputCodes.ExitActionReset:
+                        break;
+                    case OutputCodes.ExitActionShutdown:
+                        break;
+                    case OutputCodes.ExitActionSilentShutdown:
+                        break;
+                    case OutputCodes.ExitActionRestart:
+                        break;
+                    case OutputCodes.Heartbeat:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
-
-            var messageBuffer = new byte[length];
-            var messageBytesRead = await _networkStream.ReadAsync(messageBuffer, 0, length, _disposeCancellationSource.Token);
-
-            // Socket has been disconnected
-            if (messageBytesRead <= 0)
-            {
-                Disconnect();
-                break;
-            }
-
-            var message = Encoding.GetString(messageBuffer, 0, length);
-            OnReceiveMessage?.Invoke(this, new MessageEventArgs(message, messageType));
         }
     }
-    
+
     public void SendMessage(string message)
     {
         if (_isDisposed)
@@ -164,20 +210,5 @@ public class ServerSocket : IDisposable
         {
             Program.Logger.Error(nameof(SendMessage), e.ToString());
         }
-    }
-    
-    public void Dispose()
-    {
-        if (_isDisposed)
-        {
-            return;
-        }
-        
-        _disposeCancellationSource.Cancel();
-        _disposeCancellationSource.Dispose();
-        
-        _networkStream?.Close();
-        _client?.Close();
-        _listener?.Stop();
     }
 }
