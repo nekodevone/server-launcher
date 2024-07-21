@@ -1,4 +1,3 @@
-using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
@@ -13,29 +12,42 @@ public class Server
 {
     public static IEnumerable<Feature> Features => _features;
 
-    private static List<Feature> _features = new();
-    
-    public Server(string id, uint port, string logDirectory, string[] arguments)
+    private static List<Feature> _features = [];
+
+    private readonly uint? port;
+
+    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
         Id = id;
-        Port = port;
-        LogDirectory = logDirectory;
-        Arguments = arguments;
+        ServerDir = string.IsNullOrEmpty(Id)
+            ? null
+            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ConfigLocation, Id));
 
-        Config = new Config.Config(Path.Combine(logDirectory, "config.yml"));
+        ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
+                         Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
+                         Utilities.GetFullPathSafe(ServerDir);
+
+        this.port = port;
+
+        Arguments = args;
+
+        Config = new Config.Config(Path.Combine(this.ConfigLocation, "config.yml"));
         Config = Config.Load();
+
+        LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
+            Config.LogLocation));
     }
-    
+
     /// <summary>
     /// Айди
     /// </summary>
     public string Id { get; }
-    
+
     /// <summary>
     /// Сокет
     /// </summary>
     public ServerSocket Socket { get; private set; }
-    
+
     /// <summary>
     /// Процесс игры
     /// </summary>
@@ -66,22 +78,32 @@ public class Server
             return !GameProcess.HasExited;
         }
     }
-    
+
+    /// <summary>
+    /// Папка сервера
+    /// </summary>
+    public string ServerDir { get; private set; }
+
     /// <summary>
     /// Путь к логам
     /// </summary>
     public string LogDirectory { get; private set; }
-    
+
+    /// <summary>
+    /// Локация конфига
+    /// </summary>
+    public string ConfigLocation { get; }
+
     /// <summary>
     /// Порт
     /// </summary>
-    public uint Port { get; }
+    public uint Port => port ?? Config.Port;
 
     /// <summary>
     /// Аргументы
     /// </summary>
     public string[] Arguments { get; }
-    
+
     /// <summary>
     /// Поддерживаемые фичи
     /// </summary>
@@ -99,7 +121,7 @@ public class Server
             _serverStatus = value;
         }
     }
-    
+
     /// <summary>
     /// Статус сервера
     /// </summary>
@@ -115,7 +137,7 @@ public class Server
     /// Запущен ли
     /// </summary>
     public bool IsRunning => !IsStopped;
-    
+
     /// <summary>
     /// Включен ли
     /// </summary>
@@ -131,17 +153,17 @@ public class Server
     /// </summary>
     public bool IsStopping => Status is ServerStatusType.Stopping || Status is ServerStatusType.ForceStopping ||
                               Status is ServerStatusType.Restarting;
-    
+
     /// <summary>
     /// Загружается ли
     /// </summary>
     public bool IsLoading { get; set; }
-    
+
     /// <summary>
     /// Время запуска
     /// </summary>
     public DateTime StartTime { get; private set; }
-    
+
     /// <summary>
     /// Время запуска в виде строки
     /// </summary>
@@ -161,21 +183,23 @@ public class Server
             lock (this)
             {
                 LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
-                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "SCP");
+                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile)
+                    ? null
+                    : string.Format(LogDirectoryFile, "SCP");
             }
         }
     }
-    
+
     /// <summary>
     /// Путь к файлу логов
     /// </summary>
     public string LogDirectoryFile { get; private set; }
-    
+
     /// <summary>
     /// Путь к файлу логов игры
     /// </summary>
     public string GameLogDirectoryFile { get; private set; }
-    
+
     public bool CheckStopTimeout =>
         (DateTime.Now - _initStopTimeoutTime).Seconds > Config.ServerStopTimeout;
 
@@ -183,9 +207,9 @@ public class Server
         (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
-    
+
     private readonly List<IEventServerTick> _tick = new();
-    
+
     private DateTime _initStopTimeoutTime;
     private DateTime _initRestartTimeoutTime;
     private string _startDateTime;
@@ -203,10 +227,10 @@ public class Server
         {
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
-            
+
             try
             {
-//Тут будет вызов в конфиге чё нибудь
+                InitFeatures();
 
                 Log($"{Id} is executing...");
 
@@ -344,7 +368,7 @@ public class Server
                     Error("Startup failed! Exiting...");
                 }
             }
-        } while (shouldRestart) ;
+        } while (shouldRestart);
     }
 
     public void SetRestartStatus()
@@ -365,7 +389,7 @@ public class Server
         if ((killGame || !SendMessage("SOFTRESTART")) && IsGameProcessRunning)
             GameProcess.Kill();
     }
-    
+
     public void SetStopStatus(bool killGame = false)
     {
         _initStopTimeoutTime = DateTime.Now;
@@ -406,12 +430,12 @@ public class Server
     {
         Program.Logger.Log("SERVER", message, consoleColor);
     }
-    
+
     public void Error(string message)
     {
         Program.Logger.Error("SERVER", message);
     }
-    
+
     /// <summary>
     /// Sends the string <paramref name="message" /> to the SCP: SL server process.
     /// </summary>
@@ -434,13 +458,13 @@ public class Server
             if (feature is T eventHandler)
                 action.Invoke(eventHandler);
     }
-    
+
     private void MainLoop()
     {
         // Creates and starts a timer
         var timer = new Stopwatch();
         timer.Restart();
-        
+
         while (IsGameProcessRunning)
         {
             foreach (var tickEvent in _tick)
@@ -471,19 +495,19 @@ public class Server
             {
                 continue;
             }
-            
+
             Error("Force stopping the server process...");
             Stop(true);
         }
     }
-    
+
     /// <summary>
     /// Устанавливает пути к файлам логов
     /// </summary>
     private void SetLogsDirectories()
     {
         var time = StartTime.ToString();
-            
+
         var directory = string.IsNullOrEmpty(time) || string.IsNullOrEmpty(LogDirectory)
             ? null
             : $"{Path.Combine(LogDirectory.EscapeFormat(), time)}_{{0}}_log_{Port}.txt";
@@ -494,7 +518,16 @@ public class Server
             GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
         }
     }
-    
+
+    private void InitFeatures()
+    {
+        foreach (var feature in Features)
+        {
+            feature.Initialize();
+            feature.OnConfigReload();
+        }
+    }
+
     private IEnumerable<string> GetArguments(int port)
     {
         var arguments = new List<string>
@@ -508,8 +541,7 @@ public class Server
             $"-console{port}",
             $"-port{Port}"
         };
-        
-        //кто это читает, добавь || ServerConfig.NoLog.Value
+
         if (string.IsNullOrEmpty(GameLogDirectoryFile))
         {
             arguments.Add("-nolog");
@@ -530,6 +562,15 @@ public class Server
             arguments.Add("-logFile");
             arguments.Add(GameLogDirectoryFile);
         }
+
+        if (!string.IsNullOrEmpty(ConfigLocation))
+        {
+            arguments.Add("-configpath");
+            arguments.Add(ConfigLocation);
+        }
+
+        // Add custom arguments
+        arguments.AddRange(Arguments);
 
         return arguments;
     }

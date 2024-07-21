@@ -21,14 +21,4 @@ public static class Utilities
     {
         return string.IsNullOrEmpty(message) ? message : $"{TimeStamp} {message}";
     }
-    
-    /// <summary>
-    /// Возвращает полный путь для указанного пути
-    /// </summary>
-    /// <param name="path">Путь</param>
-    /// <returns>Полный путь</returns>
-    public static string GetFullPathSafe(string path)
-    {
-        return string.IsNullOrWhiteSpace(path) ? null : Path.GetFullPath(path);
-    }
 }
