@@ -9,6 +9,6 @@ public class MessageEventArgs
     }
 
     public string Message { get; }
-    
+
     public byte Color { get; }
 }

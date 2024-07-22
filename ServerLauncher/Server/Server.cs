@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
@@ -14,82 +13,100 @@ namespace ServerLauncher.Server;
 
 public class Server
 {
-    public Server(string id, uint port, string logDirectory, string[] arguments)
+    public const int RxBufferSize = 25000;
+    public const int TxBufferSize = 200000;
+
+    private static readonly Dictionary<string, ICommand> _commands = new();
+
+    private readonly uint? port;
+
+    private readonly List<ServerFeature> _features = new();
+    private DateTime _initRestartTimeoutTime;
+
+    private DateTime _initStopTimeoutTime;
+
+    private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
+    private string _startDateTime;
+
+    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
         Id = id;
-        Port = port;
-        LogDirectory = logDirectory;
-        Arguments = arguments;
-        
-        Config = new LaunchConfig(logDirectory);
+        ServerDir = string.IsNullOrEmpty(Id)
+            ? null
+            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ServersFolder, Id));
+
+        ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
+                         Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
+                         Utilities.GetFullPathSafe(ServerDir);
+
+        this.port = port;
+
+        Arguments = args;
+
+        Config = new Config.Config(Path.Combine(ConfigLocation, "config.yml"));
+        Config = Config.Load();
+
+        LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
+            Config.LogLocation));
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            var features = assembly.GetTypes().Where(type => type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
+            var features = assembly.GetTypes().Where(type =>
+                type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
 
             foreach (var feature in features)
-            {
                 try
                 {
                     var instance = Activator.CreateInstance(feature, this);
 
-                    if (instance is not ServerFeature serverFeature)
-                    {
-                        continue;
-                    }
-                
+                    if (instance is not ServerFeature serverFeature) continue;
+
                     RegisterFeature(serverFeature);
                 }
                 catch (Exception exception)
                 {
                     Error(exception.Message);
                 }
-            }
         }
     }
-    
+
     /// <summary>
-    /// Айди
+    ///     Айди
     /// </summary>
     public string Id { get; }
-    
+
     /// <summary>
-    /// Сокет
+    ///     Сокет
     /// </summary>
     public ServerSocket Socket { get; private set; }
-    
+
     /// <summary>
-    /// Процесс игры
+    ///     Процесс игры
     /// </summary>
     public Process GameProcess { get; private set; }
-    
-    /// <summary>
-    /// Конфиг
-    /// </summary>
-    public LaunchConfig Config { get; private set; }
 
     /// <summary>
-    /// Содержит настройки сервера
+    ///     Конфиг
     /// </summary>
-    public ConfigStorage ConfigStorage => Config.Storage;
+    public Config.Config Config { get; }
 
     /// <summary>
-    /// Фичи
+    ///     Фичи
     /// </summary>
     public IEnumerable<ServerFeature> Features => _features;
 
     /// <summary>
-    /// Команды
+    ///     Команды
     /// </summary>
     public Dictionary<string, ICommand> Commands => _commands;
 
     /// <summary>
-    /// Лист методов фич
+    ///     Лист методов фич
     /// </summary>
-    public List<IEventServerTick> Ticks => _ticks;
+    public List<IEventServerTick> Ticks { get; } = new();
 
     /// <summary>
-    /// Запущен ли процесс игры
+    ///     Запущен ли процесс игры
     /// </summary>
     public bool IsGameProcessRunning
     {
@@ -103,29 +120,39 @@ public class Server
             return !GameProcess.HasExited;
         }
     }
-    
-    /// <summary>
-    /// Путь к логам
-    /// </summary>
-    public string LogDirectory { get; private set; }
-    
-    /// <summary>
-    /// Порт
-    /// </summary>
-    public uint Port { get; }
 
     /// <summary>
-    /// Аргументы
+    ///     Папка сервера
+    /// </summary>
+    public string ServerDir { get; }
+
+    /// <summary>
+    ///     Путь к логам
+    /// </summary>
+    public string LogDirectory { get; private set; }
+
+    /// <summary>
+    ///     Локация конфига
+    /// </summary>
+    public string ConfigLocation { get; }
+
+    /// <summary>
+    ///     Порт
+    /// </summary>
+    public uint Port => port ?? Config.Port;
+
+    /// <summary>
+    ///     Аргументы
     /// </summary>
     public string[] Arguments { get; }
-    
+
     /// <summary>
-    /// Поддерживаемые фичи
+    ///     Поддерживаемые фичи
     /// </summary>
     public ModFeatures SupportModFeatures { get; set; }
 
     /// <summary>
-    /// Статус сервера
+    ///     Статус сервера
     /// </summary>
     public ServerStatusType Status
     {
@@ -136,51 +163,51 @@ public class Server
             _serverStatus = value;
         }
     }
-    
+
     /// <summary>
-    /// Статус сервера
+    ///     Статус сервера
     /// </summary>
     public ServerStatusType LastStatus { get; private set; }
 
     /// <summary>
-    /// Выключен ли
+    ///     Выключен ли
     /// </summary>
     public bool IsStopped => Status is ServerStatusType.NotStarted || Status is ServerStatusType.Stopped ||
                              Status is ServerStatusType.StoppedUnexpectedly;
 
     /// <summary>
-    /// Запущен ли
+    ///     Запущен ли
     /// </summary>
     public bool IsRunning => !IsStopped;
-    
+
     /// <summary>
-    /// Включен ли
+    ///     Включен ли
     /// </summary>
     public bool IsStarted => !IsStopped && !IsStarting;
 
     /// <summary>
-    /// Включается ли
+    ///     Включается ли
     /// </summary>
     public bool IsStarting => Status is ServerStatusType.Starting;
 
     /// <summary>
-    /// Выключается ли
+    ///     Выключается ли
     /// </summary>
     public bool IsStopping => Status is ServerStatusType.Stopping || Status is ServerStatusType.ForceStopping ||
                               Status is ServerStatusType.Restarting;
-    
+
     /// <summary>
-    /// Загружается ли
+    ///     Загружается ли
     /// </summary>
     public bool IsLoading { get; set; }
-    
+
     /// <summary>
-    /// Время запуска
+    ///     Время запуска
     /// </summary>
     public DateTime StartTime { get; private set; }
-    
+
     /// <summary>
-    /// Время запуска в виде строки
+    ///     Время запуска в виде строки
     /// </summary>
     public string StartDateTime
     {
@@ -198,45 +225,32 @@ public class Server
             lock (this)
             {
                 LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
-                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "SCP");
+                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile)
+                    ? null
+                    : string.Format(LogDirectoryFile, "SCP");
             }
         }
     }
-    
+
     /// <summary>
-    /// Путь к файлу логов
+    ///     Путь к файлу логов
     /// </summary>
     public string LogDirectoryFile { get; private set; }
-    
+
     /// <summary>
-    /// Путь к файлу логов игры
+    ///     Путь к файлу логов игры
     /// </summary>
     public string GameLogDirectoryFile { get; private set; }
-    
+
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.Storage.ServerStopTimeout.Value;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.ServerStopTimeout;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.Storage.ServerRestartTimeout.Value;
-    
-    private List<ServerFeature> _features = new();
-    
-    private static Dictionary<string, ICommand> _commands = new();
-
-    private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
-    
-    private readonly List<IEventServerTick> _ticks = new();
-    
-    private DateTime _initStopTimeoutTime;
-    private DateTime _initRestartTimeoutTime;
-    private string _startDateTime;
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
 
     public void Start(bool restartOnCrash = true)
     {
-        if (Status is ServerStatusType.Running)
-        {
-            throw new ServerAlreadyRunningException();
-        }
+        if (Status is ServerStatusType.Running) throw new ServerAlreadyRunningException();
 
         var shouldRestart = false;
 
@@ -244,11 +258,9 @@ public class Server
         {
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
-            
+
             try
             {
-//Тут будет вызов в конфиге чё нибудь
-
                 Log($"{Id} is executing...");
 
                 var socket = new ServerSocket((int)Port);
@@ -273,15 +285,13 @@ public class Server
                 SupportModFeatures = ModFeatures.None;
 
                 ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
-                
+
                 var inputHandlerCancellation = new CancellationTokenSource();
                 Task inputHandler = null;
 
                 if (!Program.Headless)
-                {
                     inputHandler = Task.Run(() => InputHandler.Write(this, inputHandlerCancellation.Token),
                         inputHandlerCancellation.Token);
-                }
 
                 var outputHandler = new OutputHandler(this);
 
@@ -291,7 +301,7 @@ public class Server
                 GameProcess = Process.Start(startInfo);
 
                 Status = ServerStatusType.Running;
-                
+
                 EnableFeatures();
 
                 MainLoop();
@@ -363,12 +373,13 @@ public class Server
             {
                 Error(exception.Message);
                 Program.Logger.Error(nameof(Start), exception.Message);
-                
-                if (Config.Storage.ServerStartRetry.Value)
+
+                // If the server should try to start up again
+                if (Config.ServerStartRetry)
                 {
                     shouldRestart = true;
 
-                    var waitDelayMs = Config.Storage.ServerStartRetryDelay.Value;
+                    var waitDelayMs = Config.ServerStartRetryDelay;
 
                     if (waitDelayMs > 0)
                     {
@@ -385,7 +396,7 @@ public class Server
                     Error("Startup failed! Exiting...");
                 }
             }
-        } while (shouldRestart) ;
+        } while (shouldRestart);
     }
 
     public void SetRestartStatus()
@@ -396,17 +407,14 @@ public class Server
 
     public void Restart(bool killGame = false)
     {
-        if (!IsRunning)
-        {
-            throw new ServerNotRunningException();
-        }
+        if (!IsRunning) throw new ServerNotRunningException();
 
         SetRestartStatus();
 
         if ((killGame || !SendSocketMessage("SOFTRESTART")) && IsGameProcessRunning)
             GameProcess.Kill();
     }
-    
+
     public void SetStopStatus(bool killGame = false)
     {
         _initStopTimeoutTime = DateTime.Now;
@@ -417,26 +425,17 @@ public class Server
 
     public void Stop(bool killGame = false)
     {
-        if (!IsRunning)
-        {
-            throw new ServerNotRunningException();
-        }
+        if (!IsRunning) throw new ServerNotRunningException();
 
         SetStopStatus(killGame);
 
-        if ((killGame || !SendSocketMessage("QUIT")) && IsGameProcessRunning)
-        {
-            GameProcess.Kill();
-        }
+        if ((killGame || !SendSocketMessage("QUIT")) && IsGameProcessRunning) GameProcess.Kill();
     }
 
     public bool SetServerRequestedStatus(ServerStatusType status)
     {
         // Don't override the console's own requests
-        if (IsStopping)
-        {
-            return false;
-        }
+        if (IsStopping) return false;
 
         Status = status;
 
@@ -447,7 +446,7 @@ public class Server
     {
         Program.Logger.Log("SERVER", message);
     }
-    
+
     public void Error(object message)
     {
         Program.Logger.Error("SERVER", message);
@@ -467,7 +466,7 @@ public class Server
     {
         Program.Logger.Message("SERVER", message, consoleColor);
     }
-    
+
     public bool SendSocketMessage(string message)
     {
         if (Socket is null || !Socket.IsConnected)
@@ -514,10 +513,10 @@ public class Server
                 break;
             }
             case IEventServerTick serverTick:
-                _ticks.Add(serverTick);
+                Ticks.Add(serverTick);
                 break;
         }
-                    
+
         _features.Add(serverFeature);
     }
 
@@ -525,30 +524,23 @@ public class Server
     {
         foreach (var feature in _features)
         {
-            if (!feature.IsEnabled)
-            {
-                continue;
-            }
-            
-            if (feature is not T eventHandler)
-            {
-                continue;
-            }
+            if (!feature.IsEnabled) continue;
+
+            if (feature is not T eventHandler) continue;
 
             action.Invoke(eventHandler);
         }
     }
-    
+
     private void MainLoop()
     {
         // Creates and starts a timer
         var timer = new Stopwatch();
         timer.Restart();
-        
+
         while (IsGameProcessRunning)
         {
-            foreach (var tickEvent in _ticks)
-            {
+            foreach (var tickEvent in Ticks)
                 try
                 {
                     tickEvent.OnServerTick();
@@ -558,13 +550,12 @@ public class Server
                     Error(exception.ToString());
                     Error("Tick event removed for this feature.");
 
-                    _ticks.Remove(tickEvent);
+                    Ticks.Remove(tickEvent);
                 }
-            }
 
             timer.Stop();
-            
-            Thread.Sleep(Math.Max(ConfigStorage.MultiAdminTickDelay.Default - timer.Elapsed.Milliseconds, 0));
+
+            Thread.Sleep(Math.Max(Config.TickDelay - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 
@@ -580,23 +571,20 @@ public class Server
                 Stop(true);
             }
 
-            if (Status is not ServerStatusType.ForceStopping)
-            {
-                continue;
-            }
-            
+            if (Status is not ServerStatusType.ForceStopping) continue;
+
             Error("Force stopping the server process...");
             Stop(true);
         }
     }
-    
+
     /// <summary>
-    /// Устанавливает пути к файлам логов
+    ///     Устанавливает пути к файлам логов
     /// </summary>
     private void SetLogsDirectories()
     {
         var time = StartTime.ToString();
-            
+
         var directory = string.IsNullOrEmpty(time) || string.IsNullOrEmpty(LogDirectory)
             ? null
             : $"{Path.Combine(LogDirectory.EscapeFormat(), time)}_{{0}}_log_{Port}.txt";
@@ -607,7 +595,7 @@ public class Server
             GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
         }
     }
-    
+
     private IEnumerable<string> GetArguments(int port)
     {
         var arguments = new List<string>
@@ -619,10 +607,11 @@ public class Server
             "-nodedicateddelete",
             $"-id{Environment.ProcessId}",
             $"-console{port}",
-            $"-port{Port}"
+            $"-port{Port}",
+            $"-rxbuffer {RxBufferSize}",
+            $"-txbuffer {TxBufferSize}"
         };
-        
-        //кто это читает, добавь || ServerConfig.NoLog.Value
+
         if (string.IsNullOrEmpty(GameLogDirectoryFile))
         {
             arguments.Add("-nolog");
@@ -643,6 +632,14 @@ public class Server
             arguments.Add("-logFile");
             arguments.Add(GameLogDirectoryFile);
         }
+
+        if (!string.IsNullOrEmpty(ConfigLocation))
+        {
+            arguments.Add("-configpath");
+            arguments.Add(ConfigLocation);
+        }
+
+        arguments.AddRange(Arguments.Where(arg => arg != null));
 
         return arguments;
     }

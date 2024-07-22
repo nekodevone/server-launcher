@@ -182,11 +182,11 @@ public class OutputHandler
 				case OutputCodes.ExitActionRestart:
 					server.SetServerRequestedStatus(ServerStatusType.ExitActionRestart);
 					break;
-				
-				case OutputCodes.RoundEnd:
-					roundEndCodeUsed = true;
-					server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
-					break;
+
+				// case OutputCodes.RoundEnd:
+				// 	roundEndCodeUsed = true;
+				// 	server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+				// 	break;
 
 				default:
 					Program.Logger.Debug(

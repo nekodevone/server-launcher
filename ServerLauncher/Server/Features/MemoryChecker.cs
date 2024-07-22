@@ -16,8 +16,6 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
     public override string Description => "Restarts the server if the working memory becomes too low";
 
-    public ConfigStorage Storage => Server.ConfigStorage;
-    
     public long LowBytes { get; set; }
     public long LowBytesSoft { get; set; }
 
@@ -84,12 +82,12 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
     public override void ConfigReloaded()
     {
-        _maxTicks = Storage.RestartLowMemoryTicks.Default;
-        _maxTicksSoft = Storage.RestartLowMemoryRoundEndTicks.Default;
+        _maxTicks = Server.Config.RestartLowMemoryTicks;
+        _maxTicksSoft = Server.Config.RestartLowMemoryRoundEndTicks;
 
-        LowMb = Storage.RestartLowMemory.Default;
-        LowMbSoft = Storage.RestartLowMemoryRoundEnd.Default;
-        MaxMb = Storage.MaxMemory.Default;
+        LowMb = Server.Config.RestartLowMemory;
+        LowMbSoft = Server.Config.RestartLowMemoryRoundEnd;
+        MaxMb = Server.Config.MaxMemory;
     }
 
     public void OnServerTick()
