@@ -1,3 +1,5 @@
+using ServerLauncher.Logger;
+
 namespace ServerLauncher.Server.Features;
 
 public abstract class ServerFeature
@@ -17,14 +19,14 @@ public abstract class ServerFeature
 
     public virtual void Enabled()
     {
-        Server.Log($"Feature {Name} has been enabled. {Description}");
+        Log.Info($"Feature {Name} has been enabled. {Description}");
 
         IsEnabled = true;
     }
     
     public virtual void Disabled()
     {
-        Server.Log($"Feature {Name} has been disabled.");
+        Log.Info($"Feature {Name} has been disabled.");
 
         IsEnabled = false;
     }

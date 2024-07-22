@@ -142,7 +142,7 @@ public class OutputHandler
 				return;
 			}
 			
-			server.Log(message.Message);
+			Logger.Log.Info(message.Message);
 		}
 
 		public void HandleAction(object source, byte action)
@@ -189,8 +189,7 @@ public class OutputHandler
 				// 	break;
 
 				default:
-					Program.Logger.Debug(
-						nameof(HandleAction),
+					Logger.Log.Debug(
 						$"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.");
 					break;
 			}

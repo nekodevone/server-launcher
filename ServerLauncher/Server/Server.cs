@@ -4,6 +4,7 @@ using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
 using ServerLauncher.Interfaces.Events;
+using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features;
 using ServerLauncher.Server.Features.Attributes;
@@ -65,7 +66,7 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Error(exception.Message);
+                    Log.Error(exception.Message);
                 }
         }
     }
@@ -261,7 +262,7 @@ public class Server
 
             try
             {
-                Log($"{Id} is executing...");
+                Log.Info($"{Id} is executing...");
 
                 var socket = new ServerSocket((int)Port);
                 socket.Connect();
@@ -280,7 +281,7 @@ public class Server
                     CreateNoWindow = true, UseShellExecute = false
                 };
 
-                Log($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
+                Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
 
                 SupportModFeatures = ModFeatures.None;
 
@@ -328,7 +329,7 @@ public class Server
 
                             ForEachHandler<IEventServerCrashed>(eventCrash => eventCrash.OnServerCrashed());
 
-                            Error("Game engine exited unexpectedly");
+                            Log.Error("Game engine exited unexpectedly");
 
                             shouldRestart = restartOnCrash;
                             break;
@@ -364,15 +365,13 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Error(exception.Message);
-                    Program.Logger.Error(nameof(Start), exception.Message);
-                    Error("Shutdown failed...");
+                    Log.Error(exception.Message);
+                    Log.Error("Shutdown failed...");
                 }
             }
             catch (Exception exception)
             {
-                Error(exception.Message);
-                Program.Logger.Error(nameof(Start), exception.Message);
+                Log.Error(exception.Message);
 
                 // If the server should try to start up again
                 if (Config.ServerStartRetry)
@@ -383,17 +382,17 @@ public class Server
 
                     if (waitDelayMs > 0)
                     {
-                        Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
+                        Log.Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
                         Thread.Sleep(waitDelayMs);
                     }
                     else
                     {
-                        Error("Startup failed! Retrying...");
+                        Log.Error("Startup failed! Retrying...");
                     }
                 }
                 else
                 {
-                    Error("Startup failed! Exiting...");
+                    Log.Error("Startup failed! Exiting...");
                 }
             }
         } while (shouldRestart);
@@ -442,36 +441,11 @@ public class Server
         return true;
     }
 
-    public void Log(object message)
-    {
-        Program.Logger.Log("SERVER", message);
-    }
-
-    public void Error(object message)
-    {
-        Program.Logger.Error("SERVER", message);
-    }
-
-    public void Warn(object message)
-    {
-        Program.Logger.Warn("SERVER", message);
-    }
-
-    public void Debug(object message)
-    {
-        Program.Logger.Debug("SERVER", message);
-    }
-
-    public void Message(object message, ConsoleColor consoleColor)
-    {
-        Program.Logger.Message("SERVER", message, consoleColor);
-    }
-
     public bool SendSocketMessage(string message)
     {
         if (Socket is null || !Socket.IsConnected)
         {
-            Program.Logger.Error("SERVER", "Unable to send command to server, the console is disconnected");
+            Log.Error("Unable to send command to server, the console is disconnected");
             return false;
         }
 
@@ -502,8 +476,8 @@ public class Server
                     var message =
                         $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                    Program.Logger.Debug(nameof(Server), message);
-                    Log(message);
+                    Log.Debug(message);
+                    Log.Info(message);
                 }
                 else
                 {
@@ -547,8 +521,8 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Error(exception.ToString());
-                    Error("Tick event removed for this feature.");
+                    Log.Error(exception.ToString());
+                    Log.Error("Tick event removed for this feature.");
 
                     Ticks.Remove(tickEvent);
                 }
@@ -561,19 +535,19 @@ public class Server
 
             if (Status is ServerStatusType.Restarting && CheckRestartTimeout)
             {
-                Error("Server restart timed out, killing the server process...");
+                Log.Error("Server restart timed out, killing the server process...");
                 Restart(true);
             }
 
             if (Status is ServerStatusType.Stopping && CheckStopTimeout)
             {
-                Error("Server exit timed out, killing the server process...");
+                Log.Error("Server exit timed out, killing the server process...");
                 Stop(true);
             }
 
             if (Status is not ServerStatusType.ForceStopping) continue;
 
-            Error("Force stopping the server process...");
+            Log.Error("Force stopping the server process...");
             Stop(true);
         }
     }

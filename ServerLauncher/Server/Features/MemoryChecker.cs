@@ -1,5 +1,6 @@
 using ServerLauncher.Config;
 using ServerLauncher.Interfaces.Events;
+using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features.Attributes;
 
@@ -96,7 +97,7 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
         
         if (_tickCount < _maxTicks && LowBytes >= 0 && MemoryLeftBytes <= LowBytes)
         {
-            Server.Warn(
+            Log.Warning(
                 $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart if it continues");
             _tickCount++;
         }
@@ -107,7 +108,7 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
         if (!_restart && _tickCountSoft < _maxTicksSoft && LowBytesSoft >= 0 && MemoryLeftBytes <= LowBytesSoft)
         {
-            Server.Warn(
+            Log.Warning(
                 $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart at the end of the round if it continues");
             _tickCountSoft++;
         }
@@ -120,14 +121,14 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
         if (_tickCount >= _maxTicks)
         {
-            Server.Error("Restarting due to low memory...");
+            Log.Error("Restarting due to low memory...");
             Server.Restart();
 
             _restart = false;
         }
         else if (!_restart && _tickCountSoft >= _maxTicksSoft)
         {
-            Server.Warn("Server will restart at the end of the round due to low memory");
+            Log.Warning("Server will restart at the end of the round due to low memory");
 
             _restart = true;
         }
@@ -137,7 +138,7 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
     {
         if (!_restart || Server.IsStopping) return;
 
-        Server.Error("Restarting due to low memory (Round End)...");
+        Log.Error("Restarting due to low memory (Round End)...");
 
         Server.Restart();
 

@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using ServerLauncher.Logger;
 using ServerLauncher.Server.EventArgs;
 using ServerLauncher.Server.Handlers.Enums;
 
@@ -92,7 +93,7 @@ public class ServerSocket : IDisposable
             }
             catch (Exception e)
             {
-                Program.Logger.Error(nameof(Connect), e.ToString());
+                Log.Error(e.ToString());
             }
         }, _listener);
     }
@@ -160,7 +161,7 @@ public class ServerSocket : IDisposable
                 var message = $"{codeBuffer[0]:X}{Encoding.GetString(buffer, 0, length)}";
                 ArrayPool<byte>.Shared.Return(buffer);
 
-                Program.Logger.Log("SERVER", message);
+                Log.Info(message);
             }
             else
             {
@@ -208,7 +209,7 @@ public class ServerSocket : IDisposable
         }
         catch (Exception e)
         {
-            Program.Logger.Error(nameof(SendMessage), e.ToString());
+            Log.Error(e.ToString());
         }
     }
 }
