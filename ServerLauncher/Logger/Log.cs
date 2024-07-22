@@ -6,12 +6,19 @@ namespace ServerLauncher.Logger
 {
     public sealed class Log : IDisposable
     {
+        /// <summary>
+        /// Инстант логгера
+        /// </summary>
         public static Log Instance;
 
+        /// <summary>
+        /// Инструмент для записи в файл логов
+        /// </summary>
         private readonly StreamWriter _streamWriter;
 
-        private readonly string _path;
-
+        /// <summary>
+        /// Кэш тегов из имен классов, откуда вызываются логи
+        /// </summary>
         private readonly ConcurrentDictionary<string, string> _classNameCache = new();
 
         public Log(string directory)
@@ -21,8 +28,8 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            _path = Path.Combine(directory, $"{Utilities.DateTime}.log");
-            _streamWriter = File.AppendText(_path);
+            var path = Path.Combine(directory, $"{Utilities.DateTime}.log");
+            _streamWriter = File.AppendText(path);
         }
 
         /// <summary>
@@ -86,6 +93,12 @@ namespace ServerLauncher.Logger
             Send("[" + className + "] " + message, LogLevel.Debug, ConsoleColor.DarkGray);
         }
 
+        /// <summary>
+        /// Формирует сообщение для логов, добавляя ему цвет, время и тег уровня логгирования
+        /// </summary>
+        /// <param name="message">Сообщение</param>
+        /// <param name="level">Уровень логгирования</param>
+        /// <param name="color">Цвет</param>
         private static void Send(string message, LogLevel level, ConsoleColor color)
         {
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -93,6 +106,11 @@ namespace ServerLauncher.Logger
             SendRaw(formattedMessage, color);
         }
 
+        /// <summary>
+        /// Отправляет лог в консоль и файл
+        /// </summary>
+        /// <param name="message">Лог</param>
+        /// <param name="color">Цвет для консоли</param>
         private static void SendRaw(string message, ConsoleColor color)
         {
             Instance._streamWriter.Write(message);
