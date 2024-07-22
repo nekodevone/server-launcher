@@ -36,6 +36,9 @@ namespace ServerLauncher.Config
 
         [YamlMember(Description = "The time in milliseconds between checking if a server is still running when safely shutting down")]
         public int SafeShutdownCheckDelay { get; set; } = 100;
+        
+        [YamlMember(Description = "The time in milliseconds before Launcher gives up on safely shutting down a server")]
+        public int SafeShutdownTimeout { get; set; } = 10000;
 
         [YamlMember(Description = "Время в секундах до принудительного перезапуска сервера Launcher, если он не отвечает на обычную команду перезапуска")]
         public double ServerRestartTimeout { get; set; } = 10;
