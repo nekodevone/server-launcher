@@ -33,7 +33,7 @@ public class Server
         Id = id;
         ServerDir = string.IsNullOrEmpty(Id)
             ? null
-            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ConfigLocation, Id));
+            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ServersFolder, Id));
 
         ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
                          Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
@@ -555,7 +555,7 @@ public class Server
 
             timer.Stop();
 
-            Thread.Sleep(Math.Max(Config.MultiAdminTickDelay - timer.Elapsed.Milliseconds, 0));
+            Thread.Sleep(Math.Max(Config.TickDelay - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 
