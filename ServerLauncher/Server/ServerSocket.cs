@@ -158,7 +158,7 @@ public class ServerSocket : IDisposable
                     continue;
                 }
 
-                var message = $"{codeBuffer[0]:X}{Encoding.GetString(buffer, 0, length)}";
+                var message = $"{Encoding.GetString(buffer, 0, length)}";
                 ArrayPool<byte>.Shared.Return(buffer);
 
                 Log.Info(message);
