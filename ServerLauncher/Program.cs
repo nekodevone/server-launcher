@@ -15,13 +15,15 @@ public static class Program
 
     public static bool Headless { get; private set; }
 
-    private static uint? portArg;
-    public static readonly string[] Args = Environment.GetCommandLineArgs();
+    private static uint? _portArg;
 
-    private static IExitSignal exitSignalListener;
+    private static readonly string[] Args = Environment.GetCommandLineArgs();
 
-    private static bool exited = false;
-    private static readonly object ExitLock = new object();
+    private static IExitSignal _exitSignalListener;
+
+    private static bool _exited = false;
+    
+    private static readonly object ExitLock = new();
 
     public static void Main()
     {
@@ -37,26 +39,29 @@ public static class Program
         }
         else if (OperatingSystem.IsWindows())
         {
-            exitSignalListener = new WinExitSignal();
+            _exitSignalListener = new WinExitSignal();
         }
 
-        if (exitSignalListener != null)
-            exitSignalListener.Exit += OnExit;
+        if (_exitSignalListener != null)
+            _exitSignalListener.Exit += OnExit;
 
-        // Remove executable path
+        // Удаляем путь к исполняемому файлу
         if (Args.Length > 0)
+        {
             Args[0] = null;
+        }
+
         Headless = GetFlagFromArgs(Args, "headless", "h");
 
         var serverIdArg = GetParamFromArgs(Args, "server-id", "id");
         var configArg = GetParamFromArgs(Args, "config", "c");
-        portArg = uint.TryParse(GetParamFromArgs(Args, "port", "p"), out uint port) ? (uint?)port : null;
+        _portArg = uint.TryParse(GetParamFromArgs(Args, "port", "p"), out var port) ? port : null;
 
         Server.Server server = null;
 
         if (!string.IsNullOrEmpty(serverIdArg) || !string.IsNullOrEmpty(configArg))
         {
-            server = new Server.Server(serverIdArg, portArg, configArg, Args);
+            server = new Server.Server(serverIdArg, _portArg, configArg, Args);
 
             InstantiatedServers.Add(server);
         }
@@ -92,7 +97,7 @@ public static class Program
         catch (Exception exception)
         {
             Logger.Error("SERVER", exception.ToString());
-            
+
             Logger.Dispose();
         }
     }
@@ -102,7 +107,7 @@ public static class Program
     {
         lock (ExitLock)
         {
-            if (exited)
+            if (_exited)
                 return;
 
             Logger.Message("SERVER", "Stopping servers and exiting Laucnher...", ConsoleColor.DarkMagenta);
@@ -132,7 +137,7 @@ public static class Program
                             continue;
                         }
 
-                        Logger.Message("SERVER",
+                        Logger.Message("ERROR",
                             string.IsNullOrEmpty(server.Id)
                                 ? $"Failed to stop the default server within {timeWaited} ms, giving up..."
                                 : $"Failed to stop server with ID \"{server.Id}\" within {timeWaited} ms, giving up...",
@@ -140,72 +145,58 @@ public static class Program
                         break;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // LogDebugException(nameof(OnExit), ex);
                 }
             }
 
-            exited = true;
+            _exited = true;
         }
     }
 
     private static bool GetFlagFromArgs(string[] args, string key = null, string alias = null)
+    {
+        return GetFlagFromArgs(args, [key], [alias]);
+    }
+
+    private static bool GetFlagFromArgs(string[] args, string[] keys = null, string[] aliases = null)
+    {
+        if (keys.IsNullOrEmpty() && aliases.IsNullOrEmpty()) return false;
+
+        return bool.TryParse(GetParamFromArgs(args, keys, aliases), out var result)
+            ? result
+            : ArgsContainsParam(args, keys, aliases);
+    }
+
+    private static string GetParamFromArgs(string[] args, string key = null, string alias = null)
+    {
+        return GetParamFromArgs(args, [key], [alias]);
+    }
+
+    private static string GetParamFromArgs(string[] args, string[] keys = null, string[] aliases = null)
+    {
+        var hasKeys = !keys.IsNullOrEmpty();
+        var hasAliases = !aliases.IsNullOrEmpty();
+
+        if (!hasKeys && !hasAliases)
         {
-            return GetFlagFromArgs(args, new[] { key }, new[] { alias });
+            return null;
         }
 
-        private static bool GetFlagFromArgs(string[] args, string[] keys = null, string[] aliases = null)
+        for (var i = 0; i < args.Length - 1; i++)
         {
-            if (keys.IsNullOrEmpty() && aliases.IsNullOrEmpty()) return false;
+            var lowArg = args[i]?.ToLower();
 
-            return bool.TryParse(GetParamFromArgs(args, keys, aliases), out var result)
-                ? result
-                : ArgsContainsParam(args, keys, aliases);
-        }
-
-        private static string GetParamFromArgs(string[] args, string key = null, string alias = null)
-        {
-            return GetParamFromArgs(args, new string[] { key }, new string[] { alias });
-        }
-
-        private static string GetParamFromArgs(string[] args, string[] keys = null, string[] aliases = null)
-        {
-            var hasKeys = !keys.IsNullOrEmpty();
-            var hasAliases = !aliases.IsNullOrEmpty();
-
-            if (!hasKeys && !hasAliases) return null;
-
-            for (var i = 0; i < args.Length - 1; i++)
+            if (string.IsNullOrEmpty(lowArg))
             {
-                var lowArg = args[i]?.ToLower();
+                continue;
+            }
 
-                if (string.IsNullOrEmpty(lowArg)) continue;
-
-                if (hasKeys)
+            if (hasKeys)
+            {
+                if (keys!.Any(key => lowArg == $"--{key?.ToLower()}"))
                 {
-                    if (keys.Any(key => lowArg == $"--{key?.ToLower()}"))
-                    {
-                        var value = args[i + 1];
-
-                        args[i] = null;
-                        args[i + 1] = null;
-
-                        return value;
-                    }
-                }
-
-                if (!hasAliases)
-                {
-                    continue;
-                }
-
-                {
-                    if (!aliases.Any(alias => lowArg == $"-{alias?.ToLower()}"))
-                    {
-                        continue;
-                    }
-
                     var value = args[i + 1];
 
                     args[i] = null;
@@ -215,45 +206,68 @@ public static class Program
                 }
             }
 
-            return null;
-        }
-
-        private static bool ArgsContainsParam(IList<string> args, string[] keys = null, string[] aliases = null)
-        {
-            var hasKeys = !keys.IsNullOrEmpty();
-            var hasAliases = !aliases.IsNullOrEmpty();
-
-            if (!hasKeys && !hasAliases) return false;
-
-            for (var i = 0; i < args.Count; i++)
+            if (!hasAliases)
             {
-                var lowArg = args[i]?.ToLower();
+                continue;
+            }
 
-                if (string.IsNullOrEmpty(lowArg)) continue;
-
-                if (hasKeys)
-                {
-                    if (keys.Any(key => lowArg == $"--{key?.ToLower()}"))
-                    {
-                        args[i] = null;
-                        return true;
-                    }
-                }
-
-                if (!hasAliases)
-                {
-                    continue;
-                }
-
+            {
                 if (!aliases.Any(alias => lowArg == $"-{alias?.ToLower()}"))
                 {
                     continue;
                 }
 
+                var value = args[i + 1];
+
                 args[i] = null;
-                return true;
+                args[i + 1] = null;
+
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool ArgsContainsParam(IList<string> args, string[] keys = null, string[] aliases = null)
+    {
+        var hasKeys = !keys.IsNullOrEmpty();
+        var hasAliases = !aliases.IsNullOrEmpty();
+
+        if (!hasKeys && !hasAliases) return false;
+
+        for (var i = 0; i < args.Count; i++)
+        {
+            var lowArg = args[i]?.ToLower();
+
+            if (string.IsNullOrEmpty(lowArg))
+            {
+                continue;
             }
 
-            return false;
+            if (hasKeys)
+            {
+                if (keys!.Any(key => lowArg == $"--{key?.ToLower()}"))
+                {
+                    args[i] = null;
+                    return true;
+                }
+            }
+
+            if (!hasAliases)
+            {
+                continue;
+            }
+
+            if (!aliases.Any(alias => lowArg == $"-{alias?.ToLower()}"))
+            {
+                continue;
+            }
+
+            args[i] = null;
+            return true;
         }
+
+        return false;
     }
+}

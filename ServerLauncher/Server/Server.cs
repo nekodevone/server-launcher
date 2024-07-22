@@ -639,8 +639,7 @@ public class Server
             arguments.Add(ConfigLocation);
         }
 
-        // Add custom arguments
-        arguments.AddRange(Arguments);
+        arguments.AddRange(Arguments.Where(arg => arg != null));
 
         return arguments;
     }
