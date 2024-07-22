@@ -1,12 +1,10 @@
-using ServerLauncher.Config;
-using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features.Attributes;
 
 namespace ServerLauncher.Server.Features;
 
 [ServerFeature]
-public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundEnded
+public class MemoryChecker : ServerFeature
 {
     public MemoryChecker(Server server) : base(server)
     {
@@ -76,8 +74,19 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
         _tickCountSoft = 0;
 
         _restart = false;
+
+        ServerEvents.Tick += OnServerTick;
+        ServerEvents.RoundEnded += OnServerRoundEnded;
         
         base.Enabled();
+    }
+
+    public override void Disabled()
+    {
+        ServerEvents.Tick -= OnServerTick;
+        ServerEvents.RoundEnded -= OnServerRoundEnded;
+        
+        base.Disabled();
     }
 
     public override void ConfigReloaded()

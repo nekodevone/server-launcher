@@ -59,12 +59,12 @@ public static class Program
 
         Server.Server server = null;
 
-        if (!string.IsNullOrEmpty(serverIdArg) || !string.IsNullOrEmpty(configArg))
-        {
-            server = new Server.Server(serverIdArg, _portArg, configArg, Args);
+        //   if (!string.IsNullOrEmpty(serverIdArg) || !string.IsNullOrEmpty(configArg))
+        //{
+        server = new Server.Server("Poh", _portArg, Directory.GetCurrentDirectory(), Args);
 
-            InstantiatedServers.Add(server);
-        }
+        InstantiatedServers.Add(server);
+        //}
 
         if (server == null)
         {

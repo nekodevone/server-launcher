@@ -3,7 +3,6 @@ using System.Reflection;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
-using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features;
 using ServerLauncher.Server.Features.Attributes;
@@ -99,11 +98,6 @@ public class Server
     ///     Команды
     /// </summary>
     public Dictionary<string, ICommand> Commands => _commands;
-
-    /// <summary>
-    ///     Лист методов фич
-    /// </summary>
-    public List<IEventServerTick> Ticks { get; } = new();
 
     /// <summary>
     ///     Запущен ли процесс игры
@@ -284,7 +278,7 @@ public class Server
 
                 SupportModFeatures = ModFeatures.None;
 
-                ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
+                ServerEvents.OnStarting();
 
                 var inputHandlerCancellation = new CancellationTokenSource();
                 Task inputHandler = null;
@@ -326,7 +320,7 @@ public class Server
                         default:
                             Status = ServerStatusType.StoppedUnexpectedly;
 
-                            ForEachHandler<IEventServerCrashed>(eventCrash => eventCrash.OnServerCrashed());
+                            ServerEvents.OnCrashed();
 
                             Error("Game engine exited unexpectedly");
 
@@ -420,7 +414,7 @@ public class Server
         _initStopTimeoutTime = DateTime.Now;
         Status = killGame ? ServerStatusType.ForceStopping : ServerStatusType.Stopping;
 
-        ForEachHandler<IEventServerStopped>(stopEvent => stopEvent.OnServerStopped());
+        ServerEvents.OnStopped();
     }
 
     public void Stop(bool killGame = false)
@@ -490,46 +484,26 @@ public class Server
 
     public void RegisterFeature(ServerFeature serverFeature)
     {
-        switch (serverFeature)
+        if (serverFeature is ICommand command)
         {
-            case ICommand command:
+            var commandKey = command.Command.ToLower().Trim();
+
+            // If the command was already registered
+            if (_commands.ContainsKey(commandKey))
             {
-                var commandKey = command.Command.ToLower().Trim();
+                var message =
+                    $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                // If the command was already registered
-                if (_commands.ContainsKey(commandKey))
-                {
-                    var message =
-                        $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
-
-                    Program.Logger.Debug(nameof(Server), message);
-                    Log(message);
-                }
-                else
-                {
-                    _commands.Add(commandKey, command);
-                }
-
-                break;
+                Program.Logger.Debug(nameof(Server), message);
+                Log(message);
             }
-            case IEventServerTick serverTick:
-                Ticks.Add(serverTick);
-                break;
+            else
+            {
+                _commands.Add(commandKey, command);
+            }
         }
 
         _features.Add(serverFeature);
-    }
-
-    public void ForEachHandler<T>(Action<T> action) where T : IEvent
-    {
-        foreach (var feature in _features)
-        {
-            if (!feature.IsEnabled) continue;
-
-            if (feature is not T eventHandler) continue;
-
-            action.Invoke(eventHandler);
-        }
     }
 
     private void MainLoop()
@@ -540,18 +514,7 @@ public class Server
 
         while (IsGameProcessRunning)
         {
-            foreach (var tickEvent in Ticks)
-                try
-                {
-                    tickEvent.OnServerTick();
-                }
-                catch (Exception exception)
-                {
-                    Error(exception.ToString());
-                    Error("Tick event removed for this feature.");
-
-                    Ticks.Remove(tickEvent);
-                }
+            ServerEvents.OnTick();
 
             timer.Stop();
 

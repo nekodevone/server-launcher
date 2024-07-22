@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.EventArgs;
 using ServerLauncher.Server.Handlers.Enums;
@@ -83,19 +82,19 @@ public class OutputHandler
 					{
 						case "the round is about to restart! please wait":
 							if (!roundEndCodeUsed)
-								server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+								ServerEvents.OnRoundEnded();
 							break;
 
 						case "new round has been started":
-							server.ForEachHandler<IEventServerRoundStarted>(roundStart => roundStart.OnServerRoundStarted());
+							ServerEvents.OnRoundStarted();
 							break;
 
 						case "level loaded. creating match":
-							server.ForEachHandler<IEventServerStarted>(serverStart => serverStart.OnServerStarted());
+							ServerEvents.OnStarted();
 							break;
 
 						case "server full":
-							server.ForEachHandler<IEventServerFull>(serverFull => serverFull.OnServerFull());
+							ServerEvents.OnFull();
 							break;
 					}
 				}
@@ -115,19 +114,19 @@ public class OutputHandler
 				{
 					case "round-end-event":
 						if (!roundEndCodeUsed)
-							server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+							ServerEvents.OnRoundEnded();
 						break;
 
 					case "round-start-event":
-						server.ForEachHandler<IEventServerRoundStarted>(roundStart => roundStart.OnServerRoundStarted());
+						ServerEvents.OnRoundStarted();
 						break;
 
 					case "server-start-event":
-						server.ForEachHandler<IEventServerStarted>(serverStart => serverStart.OnServerStarted());
+						ServerEvents.OnStarted();
 						break;
 
 					case "server-full-event":
-						server.ForEachHandler<IEventServerFull>(serverFull => serverFull.OnServerFull());
+						ServerEvents.OnFull();
 						break;
 
 					case "set-supported-features":
@@ -152,15 +151,15 @@ public class OutputHandler
 				// This seems to show up at the waiting for players event
 				case OutputCodes.RoundRestart:
 					server.IsLoading = false;
-					server.ForEachHandler<IEventServerWaitingForPlayers>(waitingForPlayers => waitingForPlayers.OnServerWaitingForPlayers());
+					ServerEvents.OnWaitingForPlayers();
 					break;
 
 				case OutputCodes.IdleEnter:
-					server.ForEachHandler<IEventServerIdleEntered>(idleEnter => idleEnter.OnServerIdleEntered());
+					ServerEvents.OnIdleEntered();
 					break;
 
 				case OutputCodes.IdleExit:
-					server.ForEachHandler<IEventIdleExited>(idleExit => idleExit.OnServerIdleExited());
+					ServerEvents.OnIdleExited();
 					break;
 
 				// Requests to reset the ExitAction status
