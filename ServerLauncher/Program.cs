@@ -22,7 +22,7 @@ public static class Program
     private static IExitSignal _exitSignalListener;
 
     private static bool _exited = false;
-    
+
     private static readonly object ExitLock = new();
 
     public static void Main()

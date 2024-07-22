@@ -24,7 +24,7 @@ namespace ServerLauncher
         }
 
         private readonly StreamWriter _streamWriter;
-        
+
         private readonly string _path;
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace ServerLauncher
         {
             Send($"[INFO] [{tag}] {message}", ConsoleColor.DarkGray);
         }
-        
+
         /// <summary>
         /// Выводит в консоль сообщение
         /// </summary>

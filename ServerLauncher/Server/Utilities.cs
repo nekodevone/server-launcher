@@ -5,7 +5,7 @@ namespace ServerLauncher.Server;
 public static class Utilities
 {
     public static object Lock { get; } = new object();
-    
+
     /// <summary>
     /// Получает индекс нон-эксейпед символа в строке
     /// </summary>
@@ -42,7 +42,8 @@ public static class Utilities
 
             if (!escaped)
             {
-                if (stringChar == escapeChar && (escapeChar != inChar || ((i + 1) < count && inString[startIndex + i + 1] == escapeChar)))
+                if (stringChar == escapeChar && (escapeChar != inChar ||
+                                                 ((i + 1) < count && inString[startIndex + i + 1] == escapeChar)))
                 {
                     escaped = true;
                     continue;
@@ -85,7 +86,7 @@ public static class Utilities
     {
         return IndexOfNonEscaped(inString, inChar, 0, inString.Length, escapeChar);
     }
-    
+
     /// <summary>
     /// Превращает строку аргументов в массив из аргументов
     /// </summary>
@@ -98,7 +99,8 @@ public static class Utilities
     /// <param name="keepQuotes"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
-    public static string[] StringToArgs(string inString, int startIndex, int count, char separator = ' ', char escapeChar = '\\', char quoteChar = '\"', bool keepQuotes = false)
+    public static string[] StringToArgs(string inString, int startIndex, int count, char separator = ' ',
+        char escapeChar = '\\', char quoteChar = '\"', bool keepQuotes = false)
     {
         if (inString == null)
         {
@@ -129,13 +131,17 @@ public static class Utilities
 
             if (!escaped)
             {
-                if (stringChar == escapeChar && (escapeChar != quoteChar || ((i + 1) < count && inString[startIndex + i + 1] == escapeChar)))
+                if (stringChar == escapeChar && (escapeChar != quoteChar ||
+                                                 ((i + 1) < count && inString[startIndex + i + 1] == escapeChar)))
                 {
                     escaped = true;
                     continue;
                 }
 
-                if (stringChar == quoteChar && (inQuotes || ((i + 1) < count && IndexOfNonEscaped(inString, quoteChar, startIndex + (i + 1), count - (i + 1), escapeChar) > 0)))
+                if (stringChar == quoteChar && (inQuotes || ((i + 1) < count &&
+                                                             IndexOfNonEscaped(inString, quoteChar,
+                                                                 startIndex + (i + 1), count - (i + 1), escapeChar) >
+                                                             0)))
                 {
                     // Ignore quotes if there's no future non-escaped quotes
 
@@ -159,7 +165,7 @@ public static class Utilities
 
         return args.ToArray();
     }
-    
+
     /// <summary>
     /// Получает название эксешника в зависимости от ОС
     /// </summary>
@@ -181,16 +187,16 @@ public static class Utilities
         {
             throw new FileNotFoundException("Invalid OS, can't run executable");
         }
-        
+
         if (!File.Exists(name))
         {
             throw new FileNotFoundException(
                 $"Can't find game executable \"{name}\", the working directory must be the game directory");
         }
-        
+
         return name;
     }
-    
+
     /// <summary>
     /// Возвращает полный путь для указанного пути
     /// </summary>
@@ -200,7 +206,7 @@ public static class Utilities
     {
         return string.IsNullOrWhiteSpace(path) ? null : Path.GetFullPath(path);
     }
-    
+
     /// <summary>
     /// Превращает строку аргументов в массив из аргументов
     /// </summary>
@@ -211,9 +217,11 @@ public static class Utilities
     /// <param name="quoteChar"></param>
     /// <param name="keepQuotes"></param>
     /// <returns></returns>
-    public static string[] StringToArgs(string inString, int startIndex, char separator = ' ', char escapeChar = '\\', char quoteChar = '\"', bool keepQuotes = false)
+    public static string[] StringToArgs(string inString, int startIndex, char separator = ' ', char escapeChar = '\\',
+        char quoteChar = '\"', bool keepQuotes = false)
     {
-        return StringToArgs(inString, startIndex, inString.Length - startIndex, separator, escapeChar, quoteChar, keepQuotes);
+        return StringToArgs(inString, startIndex, inString.Length - startIndex, separator, escapeChar, quoteChar,
+            keepQuotes);
     }
 
     /// <summary>
@@ -225,7 +233,8 @@ public static class Utilities
     /// <param name="quoteChar"></param>
     /// <param name="keepQuotes"></param>
     /// <returns></returns>
-    public static string[] StringToArgs(string inString, char separator = ' ', char escapeChar = '\\', char quoteChar = '\"', bool keepQuotes = false)
+    public static string[] StringToArgs(string inString, char separator = ' ', char escapeChar = '\\',
+        char quoteChar = '\"', bool keepQuotes = false)
     {
         return StringToArgs(inString, 0, inString.Length, separator, escapeChar, quoteChar, keepQuotes);
     }
