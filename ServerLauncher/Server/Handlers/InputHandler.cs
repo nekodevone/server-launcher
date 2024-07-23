@@ -48,8 +48,7 @@ public static class InputHandler
 
                     continue;
                 }
-
-                //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
+                
                 server.Message($">>> {message}", ConsoleColor.DarkMagenta);
 
                 //Является ли команда не лаунчера
@@ -108,6 +107,7 @@ public static class InputHandler
 
                     command = _messages[_selectedMessage];
                     
+                    //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                     Console.Write($"\r{command}");
 
                     break;
@@ -121,6 +121,7 @@ public static class InputHandler
                     
                     command = _messages[_selectedMessage];
                     
+                    //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                     Console.Write($"\r{command}");
                     
                     break;
