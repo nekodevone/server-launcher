@@ -50,6 +50,8 @@ public class Server
         LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
             Config.LogLocation));
 
+        Program.Logger.InitializeServerLogger(Id, LogDirectory);
+
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
             var features = assembly.GetTypes().Where(type =>
@@ -66,7 +68,7 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception.Message);
+                    Log.Error(exception.Message, Id);
                 }
         }
     }
@@ -262,7 +264,7 @@ public class Server
 
             try
             {
-                Log.Info($"{Id} is executing...");
+                Log.Info($"{Id} is executing...", Id);
 
                 var socket = new ServerSocket((int)Port);
                 socket.Connect();
@@ -281,7 +283,7 @@ public class Server
                     CreateNoWindow = true, UseShellExecute = false
                 };
 
-                Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
+                Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}", Id);
 
                 SupportModFeatures = ModFeatures.None;
 
@@ -329,7 +331,7 @@ public class Server
 
                             ForEachHandler<IEventServerCrashed>(eventCrash => eventCrash.OnServerCrashed());
 
-                            Log.Error("Game engine exited unexpectedly");
+                            Log.Error("Game engine exited unexpectedly", Id);
 
                             shouldRestart = restartOnCrash;
                             break;
@@ -365,13 +367,13 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception.Message);
-                    Log.Error("Shutdown failed...");
+                    Log.Error(exception.Message, Id);
+                    Log.Error("Shutdown failed...", Id);
                 }
             }
             catch (Exception exception)
             {
-                Log.Error(exception.Message);
+                Log.Error(exception.Message, Id);
 
                 // If the server should try to start up again
                 if (Config.ServerStartRetry)
@@ -382,17 +384,17 @@ public class Server
 
                     if (waitDelayMs > 0)
                     {
-                        Log.Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
+                        Log.Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...", Id);
                         Thread.Sleep(waitDelayMs);
                     }
                     else
                     {
-                        Log.Error("Startup failed! Retrying...");
+                        Log.Error("Startup failed! Retrying...", Id);
                     }
                 }
                 else
                 {
-                    Log.Error("Startup failed! Exiting...");
+                    Log.Error("Startup failed! Exiting...", Id);
                 }
             }
         } while (shouldRestart);
@@ -445,7 +447,7 @@ public class Server
     {
         if (Socket is null || !Socket.IsConnected)
         {
-            Log.Error("Unable to send command to server, the console is disconnected");
+            Log.Error("Unable to send command to server, the console is disconnected", Id);
             return false;
         }
 
@@ -476,8 +478,8 @@ public class Server
                     var message =
                         $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                    Log.Debug(message);
-                    Log.Info(message);
+                    Log.Debug(message, Id);
+                    Log.Info(message, Id);
                 }
                 else
                 {
@@ -521,8 +523,8 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception.ToString());
-                    Log.Error("Tick event removed for this feature.");
+                    Log.Error(exception.ToString(), Id);
+                    Log.Error("Tick event removed for this feature.", Id);
 
                     Ticks.Remove(tickEvent);
                 }
@@ -535,19 +537,19 @@ public class Server
 
             if (Status is ServerStatusType.Restarting && CheckRestartTimeout)
             {
-                Log.Error("Server restart timed out, killing the server process...");
+                Log.Error("Server restart timed out, killing the server process...", Id);
                 Restart(true);
             }
 
             if (Status is ServerStatusType.Stopping && CheckStopTimeout)
             {
-                Log.Error("Server exit timed out, killing the server process...");
+                Log.Error("Server exit timed out, killing the server process...", Id);
                 Stop(true);
             }
 
             if (Status is not ServerStatusType.ForceStopping) continue;
 
-            Log.Error("Force stopping the server process...");
+            Log.Error("Force stopping the server process...", Id);
             Stop(true);
         }
     }

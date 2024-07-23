@@ -6,6 +6,8 @@ namespace ServerLauncher;
 
 public static class Program
 {
+    public static Log Logger => Log.Instance;
+
     public static Version Version { get; } = new(1, 0, 0);
 
     public static Config.Config GlobalConfig = new(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
@@ -23,8 +25,6 @@ public static class Program
     private static bool _exited = false;
 
     private static readonly object ExitLock = new();
-
-    private static Log Logger => Log.Instance;
 
     public static void Main()
     {

@@ -1,5 +1,6 @@
 ﻿using ServerLauncher.Utility;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 namespace ServerLauncher.Logger
@@ -14,7 +15,7 @@ namespace ServerLauncher.Logger
         /// <summary>
         /// Инструмент для записи в файл логов
         /// </summary>
-        private readonly StreamWriter _streamWriter;
+        private readonly Dictionary<string, StreamWriter> _streamWriters = new();
 
         /// <summary>
         /// Кэш тегов из имен классов, откуда вызываются логи
@@ -28,8 +29,19 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"{Utilities.DateTime}.log");
-            _streamWriter = File.AppendText(path);
+            var path = Path.Combine(directory, $"default-{Utilities.DateTime}.log");
+            _streamWriters.Add("default", File.AppendText(path));
+        }
+
+        public void InitializeServerLogger(string serverId, string directory)
+        {
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
+            }
+
+            var path = Path.Combine(directory, $"{serverId}-{Utilities.DateTime}.log");
+            _streamWriters.Add(serverId, File.AppendText(path));
         }
 
         /// <summary>
@@ -44,53 +56,53 @@ namespace ServerLauncher.Logger
         /// Информационное сообщение в логи
         /// </summary>
         /// <param name="message">Сообщение</param>
-        public static void Info(string message,
+        public static void Info(string message, string serverId = "default",
             [CallerFilePath] string filePath = "",
             ConsoleColor color = ConsoleColor.Cyan)
         {
             var className = Instance._classNameCache.GetOrAdd(filePath, path =>
                 Path.GetFileNameWithoutExtension(path).ToUpper());
 
-            Send("[" + className + "] " + message, LogLevel.Info, color);
+            Send("[" + className + "] " + message, serverId, LogLevel.Info, color);
         }
 
         /// <summary>
         /// Предупреждающее сообщение в логи
         /// </summary>
         /// <param name="message">Сообщение</param>
-        public static void Warning(string message,
+        public static void Warning(string message, string serverId = "default",
             [CallerFilePath] string filePath = "")
         {
             var className = Instance._classNameCache.GetOrAdd(filePath, path =>
                 Path.GetFileNameWithoutExtension(path).ToUpper());
 
-            Send("[" + className + "] " + message, LogLevel.Warn, ConsoleColor.Yellow);
+            Send("[" + className + "] " + message, serverId, LogLevel.Warn, ConsoleColor.Yellow);
         }
 
         /// <summary>
         /// Сообщение об ошибке в логи
         /// </summary>
         /// <param name="message">Сообщение</param>
-        public static void Error(string message,
+        public static void Error(string message, string serverId = "default",
             [CallerFilePath] string filePath = "")
         {
             var className = Instance._classNameCache.GetOrAdd(filePath, path =>
                 Path.GetFileNameWithoutExtension(path).ToUpper());
 
-            Send("[" + className + "] " + message, LogLevel.Error, ConsoleColor.Red);
+            Send("[" + className + "] " + message, serverId, LogLevel.Error, ConsoleColor.Red);
         }
 
         /// <summary>
         /// Дебаг сообщение
         /// </summary>
         /// <param name="message">Сообщение</param>
-        public static void Debug(string message,
+        public static void Debug(string message, string serverId = "default",
             [CallerFilePath] string filePath = "")
         {
             var className = Instance._classNameCache.GetOrAdd(filePath, path =>
                 Path.GetFileNameWithoutExtension(path).ToUpper());
 
-            Send("[" + className + "] " + message, LogLevel.Debug, ConsoleColor.DarkGray);
+            Send("[" + className + "] " + message, serverId, LogLevel.Debug, ConsoleColor.DarkGray);
         }
 
         /// <summary>
@@ -99,11 +111,11 @@ namespace ServerLauncher.Logger
         /// <param name="message">Сообщение</param>
         /// <param name="level">Уровень логгирования</param>
         /// <param name="color">Цвет</param>
-        private static void Send(string message, LogLevel level, ConsoleColor color)
+        private static void Send(string message, string serverId, LogLevel level, ConsoleColor color)
         {
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             var formattedMessage = "[" + timestamp + "] [" + level.ToString().ToUpper() + "] " + message;
-            SendRaw(formattedMessage, color);
+            SendRaw(formattedMessage, serverId, color);
         }
 
         /// <summary>
@@ -111,16 +123,38 @@ namespace ServerLauncher.Logger
         /// </summary>
         /// <param name="message">Лог</param>
         /// <param name="color">Цвет для консоли</param>
-        private static void SendRaw(string message, ConsoleColor color)
+        private static void SendRaw(string message, string serverId, ConsoleColor color)
         {
-            Instance._streamWriter.Write(message);
+            if (!Instance._streamWriters.TryGetValue(serverId, out var writer))
+            {
+                if (!Instance._streamWriters.TryGetValue("default", out var defaultWriter))
+                {
+                    Console.ForegroundColor = color;
+                    Console.WriteLine($"Не удалось найти общий файл логов");
+                    Console.ResetColor();
+                }
+                else
+                {
+                    var errMessage = $"Для сервера {serverId} не удалось найти файл логов чтобы доставить следующее сообщение:\n" +
+                        $"{message}";
+                    defaultWriter.Write(errMessage);
+
+                    Console.ForegroundColor = color;
+                    Console.WriteLine(errMessage, color);
+                    Console.ResetColor();
+                }
+
+                return;
+            }
+
+            writer.Write(message);
 
             if (!message.EndsWith(Environment.NewLine))
             {
-                Instance._streamWriter.WriteLine();
+                writer.WriteLine();
             }
 
-            Instance._streamWriter.Flush();
+            writer.Flush();
 
             Console.ForegroundColor = color;
             Console.WriteLine(message, color);
