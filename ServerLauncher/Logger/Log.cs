@@ -41,7 +41,11 @@ namespace ServerLauncher.Logger
             }
 
             var path = Path.Combine(directory, $"{serverId}-{Utilities.DateTime}.log");
-            _streamWriters.Add(serverId, File.AppendText(path));
+
+            if (!_streamWriters.TryAdd(serverId, File.AppendText(path)))
+            {
+                _streamWriters[serverId] = File.AppendText(path);
+            }
         }
 
         /// <summary>
@@ -129,7 +133,7 @@ namespace ServerLauncher.Logger
             {
                 if (!Instance._streamWriters.TryGetValue("default", out var defaultWriter))
                 {
-                    Console.ForegroundColor = color;
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Не удалось найти общий файл логов");
                     Console.ResetColor();
                 }
@@ -139,8 +143,8 @@ namespace ServerLauncher.Logger
                         $"{message}";
                     defaultWriter.Write(errMessage);
 
-                    Console.ForegroundColor = color;
-                    Console.WriteLine(errMessage, color);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(errMessage);
                     Console.ResetColor();
                 }
 
@@ -157,7 +161,7 @@ namespace ServerLauncher.Logger
             writer.Flush();
 
             Console.ForegroundColor = color;
-            Console.WriteLine(message, color);
+            Console.WriteLine(message);
             Console.ResetColor();
         }
     }

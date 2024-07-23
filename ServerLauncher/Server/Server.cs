@@ -50,8 +50,6 @@ public class Server
         LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
             Config.LogLocation));
 
-        Program.Logger.InitializeServerLogger(Id, LogDirectory);
-
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
             var features = assembly.GetTypes().Where(type =>
@@ -68,7 +66,7 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception.Message, Id);
+                    Log.Error(exception.Message);
                 }
         }
     }
@@ -259,6 +257,7 @@ public class Server
 
         do
         {
+            Program.Logger.InitializeServerLogger(Id, LogDirectory);
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
 
