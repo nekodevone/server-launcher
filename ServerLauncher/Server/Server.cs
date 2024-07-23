@@ -257,7 +257,6 @@ public class Server
 
         do
         {
-            Program.Logger.InitializeServerLogger(Id, LogDirectory);
             StartTime = DateTime.Now;
             Status = ServerStatusType.Starting;
 
@@ -271,6 +270,7 @@ public class Server
                 Socket = socket;
 
                 SetLogsDirectories();
+                Program.Logger.InitializeServerLogger(Id, LogDirectory);
 
                 //Аргуменыт доделать надо, конфиг нужен а его нет
                 var arguments = GetArguments(socket.Port);
