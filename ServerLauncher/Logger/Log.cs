@@ -42,10 +42,14 @@ namespace ServerLauncher.Logger
 
             var path = Path.Combine(directory, $"{serverId}-{Utilities.DateTime}.log");
 
-            if (!_streamWriters.TryAdd(serverId, File.AppendText(path)))
+            if (_streamWriters.TryGetValue(serverId, out var existingWriter))
             {
-                _streamWriters[serverId] = File.AppendText(path);
+                existingWriter.Close();
+                existingWriter.Dispose();
+                _streamWriters.Remove(serverId);
             }
+
+            _streamWriters.TryAdd(serverId, File.AppendText(path));
         }
 
         /// <summary>
