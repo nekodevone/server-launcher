@@ -234,13 +234,13 @@ public class Server
 
                 Log.Info($"{Id} is executing...", Id);
 
-                var socket = new ServerSocket((int)Port);
+                var consolePort = (int)Port + 100;
+                var socket = new ServerSocket(consolePort);
                 socket.Connect();
 
                 Socket = socket;
 
-                //Аргуменыт доделать надо, конфиг нужен а его нет
-                var arguments = GetArguments(socket.Port);
+                var arguments = GetArguments(consolePort);
 
                 var exe = Utilities.GetExecutablePath();
 
