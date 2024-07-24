@@ -1,11 +1,12 @@
-﻿using ServerLauncher.NativeExitSignal;
+﻿using ServerLauncher.Logger;
+using ServerLauncher.NativeExitSignal;
 using ServerLauncher.Utility;
 
 namespace ServerLauncher;
 
 public static class Program
 {
-    public static Logger Logger { get; private set; } = new(Directory.GetCurrentDirectory());
+    public static Log Logger => Log.Instance;
 
     public static Version Version { get; } = new(1, 0, 0);
 
@@ -28,6 +29,7 @@ public static class Program
     public static void Main()
     {
         GlobalConfig = GlobalConfig.Load();
+        Log.Instance = new Log(GlobalConfig.LogLocation);
 
         AppDomain.CurrentDomain.ProcessExit += OnExit;
 
@@ -74,15 +76,15 @@ public static class Program
         switch (string.IsNullOrEmpty(server.Id))
         {
             case false when !string.IsNullOrEmpty(server.ConfigLocation):
-                Logger.Log("SERVER",
+                Log.Info(
                     $"Starting this instance with Server ID: \"{server.Id}\" and config directory: \"{server.ConfigLocation}\"...");
                 break;
             case false:
-                Logger.Log("SERVER", $"Starting this instance with Server ID: \"{server.Id}\"...");
+                Log.Info($"Starting this instance with Server ID: \"{server.Id}\"...");
                 break;
             default:
             {
-                Logger.Log("SERVER",
+                Log.Info(
                     !string.IsNullOrEmpty(server.ConfigLocation)
                         ? $"Starting this instance with config directory: \"{server.ConfigLocation}\"..."
                         : "Starting this instance in single server mode...");
@@ -96,12 +98,11 @@ public static class Program
         }
         catch (Exception exception)
         {
-            Logger.Error("SERVER", exception.ToString());
+            Log.Error(exception.ToString());
 
             Logger.Dispose();
         }
     }
-
 
     private static void OnExit(object sender, EventArgs e)
     {
@@ -110,16 +111,16 @@ public static class Program
             if (_exited)
                 return;
 
-            Logger.Message("SERVER", "Stopping servers and exiting Laucnher...", ConsoleColor.DarkMagenta);
+            Log.Info("Stopping servers and exiting Laucnher...", color: ConsoleColor.DarkMagenta);
 
             foreach (var server in InstantiatedServers.Where(server => server.IsGameProcessRunning))
             {
                 try
                 {
-                    Logger.Message("SERVER",
+                    Log.Info(
                         string.IsNullOrEmpty(server.Id)
                             ? "Stopping the default server..."
-                            : $"Stopping server with ID \"{server.Id}\"...", ConsoleColor.DarkMagenta);
+                            : $"Stopping server with ID \"{server.Id}\"...", color: ConsoleColor.DarkMagenta);
 
                     server.Stop();
 
@@ -137,11 +138,10 @@ public static class Program
                             continue;
                         }
 
-                        Logger.Message("ERROR",
+                        Log.Error(
                             string.IsNullOrEmpty(server.Id)
                                 ? $"Failed to stop the default server within {timeWaited} ms, giving up..."
-                                : $"Failed to stop server with ID \"{server.Id}\" within {timeWaited} ms, giving up...",
-                            ConsoleColor.Red);
+                                : $"Failed to stop server with ID \"{server.Id}\" within {timeWaited} ms, giving up...");
                         break;
                     }
                 }

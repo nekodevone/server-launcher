@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using ServerLauncher.Logger;
+using System.Text;
 using YamlDotNet.Serialization;
 
 namespace ServerLauncher.Config
@@ -24,18 +25,18 @@ namespace ServerLauncher.Config
 
         public T Update()
         {
-            Program.Logger.Log("CONFIG", "Обновляю конфиги...");
+            Log.Info("Обновляю конфиги...");
 
             Save();
 
-            Program.Logger.Log("CONFIG", "Конфиги обновлены");
+            Log.Info("Конфиги обновлены");
 
             return this as T;
         }
 
         public T Load()
         {
-            Program.Logger.Log("CONFIG", "Загружаю конфиги...");
+            Log.Info("Загружаю конфиги...");
 
             if (File.Exists(FilePath))
             {
@@ -52,7 +53,7 @@ namespace ServerLauncher.Config
                         var result = deserializer.Deserialize<T>(readed);
                         result.FilePath = FilePath;
 
-                        Program.Logger.Log("CONFIG", "Конфиги загружены!");
+                        Log.Info("Конфиги загружены!");
 
                         return result;
                     }
@@ -61,10 +62,10 @@ namespace ServerLauncher.Config
                     }
                 }
 
-                Program.Logger.Log("CONFIG", "Файл конфигов либо пустой либо имеет неверный формат");
+                Log.Info("Файл конфигов либо пустой либо имеет неверный формат");
             }
 
-            Program.Logger.Log("CONFIG", "Файл конфигов не был обнаружен, создаю стандартный");
+            Log.Info("Файл конфигов не был обнаружен, создаю стандартный");
             Save();
 
             return this as T;

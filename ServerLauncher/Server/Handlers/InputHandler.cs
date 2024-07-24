@@ -1,4 +1,5 @@
 using System.Text;
+using ServerLauncher.Logger;
 using ServerLauncher.Server.Data;
 using ServerLauncher.Server.Handlers.Structures;
 
@@ -31,7 +32,7 @@ public static class InputHandler
             }
             catch (Exception e)
             {
-                Program.Logger.Error(nameof(SectionBufferWidth), e.Message);
+                Log.Error(nameof(SectionBufferWidth), e.Message);
                 return 0;
             }
         }
@@ -58,7 +59,7 @@ public static class InputHandler
 
                 if (string.IsNullOrEmpty(message)) continue;
 
-                server.Message($">>> {message}", ConsoleColor.DarkMagenta);
+                Log.Info($">>> {message}", color: ConsoleColor.DarkMagenta);
 
                 var separatorIndex = message.IndexOfAny(Separator);
                 var commandName = (separatorIndex < 0 ? message : message.Substring(0, separatorIndex)).ToLower().Trim();
@@ -76,7 +77,7 @@ public static class InputHandler
                     }
                     catch (Exception e)
                     {
-                        server.Log($"Error in command \"{commandName}\":{Environment.NewLine}{e}");
+                        Log.Info($"Error in command \"{commandName}\":{Environment.NewLine}{e}");
                     }
 
                     callServer = command.IsPassToGame;
@@ -249,7 +250,7 @@ public static class InputHandler
                     }
                     else
                     {
-                        server.Error("Error while processing input string: curSection is null!");
+                        Log.Error("Error while processing input string: curSection is null!");
                     }
                 }
                 else
@@ -294,7 +295,7 @@ public static class InputHandler
                         }
                         else
                         {
-                            server.Error("Error while processing input string: curSection is null!");
+                            Log.Error("Error while processing input string: curSection is null!");
                         }
                     }
                     else
@@ -305,7 +306,7 @@ public static class InputHandler
                 }
                 catch (Exception e)
                 {
-                    Program.Logger.Error(nameof(Write), e.Message);
+                    Log.Error(e.Message);
 
                     CurrentCursor = messageCursor;
                     SetCursor();
@@ -381,7 +382,7 @@ public static class InputHandler
             }
             catch (Exception e)
             {
-                Program.Logger.Error(nameof(SetCursor), e.Message);
+                Log.Error(nameof(SetCursor), e.Message);
             }
         }
     }
