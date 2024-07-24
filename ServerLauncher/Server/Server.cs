@@ -33,7 +33,7 @@ public class Server
         Id = id;
         ServerDir = string.IsNullOrEmpty(Id)
             ? null
-            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ConfigLocation, Id));
+            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ServersFolder, Id));
 
         ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
                          Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
