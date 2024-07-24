@@ -208,37 +208,6 @@ public class Server
     public DateTime StartTime { get; private set; }
 
     /// <summary>
-    ///     Время запуска в виде строки
-    /// </summary>
-    public string StartDateTime
-    {
-        get => _startDateTime;
-
-        private set
-        {
-            _startDateTime = value;
-
-            // Update related variables
-            LogDirectoryFile = string.IsNullOrEmpty(value) || string.IsNullOrEmpty(LogDirectory)
-                ? null
-                : $"{Path.Combine(LogDirectory.EscapeFormat(), value)}_{{0}}_log_{Port}.txt";
-
-            lock (this)
-            {
-                LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
-                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile)
-                    ? null
-                    : string.Format(LogDirectoryFile, "SCP");
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Путь к файлу логов
-    /// </summary>
-    public string LogDirectoryFile { get; private set; }
-
-    /// <summary>
     ///     Путь к файлу логов игры
     /// </summary>
     public string GameLogDirectoryFile { get; private set; }
@@ -251,7 +220,7 @@ public class Server
 
     public void Start(bool restartOnCrash = true)
     {
-        if (Status is ServerStatusType.Running) throw new ServerAlreadyRunningException();
+        if (!IsStopped) throw new ServerAlreadyRunningException();
 
         var shouldRestart = false;
 
@@ -262,15 +231,14 @@ public class Server
 
             try
             {
+                Program.Logger.InitializeServerLogger(Id, LogDirectory);
+
                 Log.Info($"{Id} is executing...", Id);
 
                 var socket = new ServerSocket((int)Port);
                 socket.Connect();
 
                 Socket = socket;
-
-                SetLogsDirectories();
-                Program.Logger.InitializeServerLogger(Id, LogDirectory);
 
                 //Аргуменыт доделать надо, конфиг нужен а его нет
                 var arguments = GetArguments(socket.Port);
@@ -362,7 +330,6 @@ public class Server
                     socket.OnReceiveAction -= outputHandler.HandleAction;
 
                     Socket = null;
-                    StartDateTime = null;
                 }
                 catch (Exception exception)
                 {
@@ -550,24 +517,6 @@ public class Server
 
             Log.Error("Force stopping the server process...", Id);
             Stop(true);
-        }
-    }
-
-    /// <summary>
-    ///     Устанавливает пути к файлам логов
-    /// </summary>
-    private void SetLogsDirectories()
-    {
-        var time = StartTime.ToString();
-
-        var directory = string.IsNullOrEmpty(time) || string.IsNullOrEmpty(LogDirectory)
-            ? null
-            : $"{Path.Combine(LogDirectory.EscapeFormat(), time)}_{{0}}_log_{Port}.txt";
-
-        lock (this)
-        {
-            LogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "MA");
-            GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
         }
     }
 

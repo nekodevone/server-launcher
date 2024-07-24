@@ -8,25 +8,25 @@ public abstract class ServerFeature
     {
         Server = server;
     }
-    
+
     public abstract string Name { get; }
-    
+
     public abstract string Description { get; }
-    
+
     public bool IsEnabled { get; protected set; }
-    
+
     public Server Server { get; }
 
     public virtual void Enabled()
     {
-        Log.Info($"Feature {Name} has been enabled. {Description}");
+        Log.Info($"Feature {Name} has been enabled. {Description}", Server.Id);
 
         IsEnabled = true;
     }
-    
+
     public virtual void Disabled()
     {
-        Log.Info($"Feature {Name} has been disabled.");
+        Log.Info($"Feature {Name} has been disabled.", Server.Id);
 
         IsEnabled = false;
     }

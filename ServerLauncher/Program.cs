@@ -28,8 +28,8 @@ public static class Program
 
     public static void Main()
     {
-        Log.Instance = new Log(Directory.GetCurrentDirectory());
         GlobalConfig = GlobalConfig.Load();
+        Log.Instance = new Log(GlobalConfig.LogLocation);
 
         AppDomain.CurrentDomain.ProcessExit += OnExit;
 

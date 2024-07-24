@@ -36,7 +36,7 @@ public class ServerSocket : IDisposable
     /// <summary>
     ///     Был ли диспоснут
     /// </summary>
-    private readonly bool _isDisposed = false;
+    private bool _isDisposed;
 
     /// <summary>
     ///     Сетевой поток
@@ -55,6 +55,8 @@ public class ServerSocket : IDisposable
     public void Dispose()
     {
         if (_isDisposed) return;
+
+        _isDisposed = true;
 
         _disposeCancellationSource.Cancel();
         _disposeCancellationSource.Dispose();
@@ -121,7 +123,7 @@ public class ServerSocket : IDisposable
             {
                 return;
             }
-            
+
             // Если нет данных, то пропускаем итерацию.
             if (!_networkStream.DataAvailable)
             {
@@ -161,7 +163,7 @@ public class ServerSocket : IDisposable
                 var message = $"{Encoding.GetString(buffer, 0, length)}";
                 ArrayPool<byte>.Shared.Return(buffer);
 
-                Log.Info(message);
+                OnReceiveMessage?.Invoke(this, new MessageEventArgs(message, codeBuffer[0]));
             }
             else
             {
