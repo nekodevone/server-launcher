@@ -35,8 +35,8 @@ public static class Program
 
         if (OperatingSystem.IsLinux())
         {
-#if LINUX
-					exitSignalListener = new UnixExitSignal();
+#if LINUX_SIGNALS
+					_exitSignalListener = new UnixExitSignal();
 #endif
         }
         else if (OperatingSystem.IsWindows())
