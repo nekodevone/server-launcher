@@ -27,7 +27,6 @@ public class Server
     private DateTime _initStopTimeoutTime;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
-    private string _startDateTime;
 
     public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
