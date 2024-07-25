@@ -4,7 +4,7 @@ public static class InputHandler
 {
     private static readonly char[] Separator = {' '};
     
-    private static readonly List<string> _messages = new();
+    private static readonly List<string> Messages = new();
 
     private static int _selectedMessage;
 
@@ -24,7 +24,7 @@ public static class InputHandler
 
                 Console.WriteLine();
 
-                _messages.Add(message);
+                Messages.Add(message);
 
                 //Скипаем если ввёл ничего
                 if (string.IsNullOrEmpty(message))
@@ -100,12 +100,12 @@ public static class InputHandler
                 case ConsoleKey.UpArrow:
                     _selectedMessage++;
 
-                    if (_selectedMessage > _messages.Count - 1)
+                    if (_selectedMessage > Messages.Count - 1)
                     {
-                        _selectedMessage = _messages.Count - 1;
+                        _selectedMessage = Messages.Count - 1;
                     }
 
-                    command = _messages[_selectedMessage];
+                    command = Messages[_selectedMessage];
                     
                     //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                     Console.Write($"\r{command}");
@@ -119,7 +119,7 @@ public static class InputHandler
                         _selectedMessage = 0;
                     }
                     
-                    command = _messages[_selectedMessage];
+                    command = Messages[_selectedMessage];
                     
                     //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                     Console.Write($"\r{command}");
