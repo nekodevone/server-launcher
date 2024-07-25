@@ -1,3 +1,5 @@
+using ServerLauncher.Logger;
+
 namespace ServerLauncher.Server.Handlers;
 
 public static class InputHandler
@@ -44,12 +46,12 @@ public static class InputHandler
 
                 if (commandName is null)
                 {
-                    server.Error($"Command name is null in {message}");
+                    Log.Error($"Command name is null in {message}");
 
                     continue;
                 }
                 
-                server.Message($">>> {message}", ConsoleColor.DarkMagenta);
+                Log.Info($">>> {message}", color: ConsoleColor.DarkMagenta);
 
                 //Является ли команда не лаунчера
                 var isServerCommand = true;
@@ -72,11 +74,11 @@ public static class InputHandler
         }
         catch (TaskCanceledException)
         {
-            server.Log("Reading commands was stopped");
+            Log.Info("Reading commands was stopped");
         }
         catch (Exception exception)
         {
-            server.Error($"Error reading command: {exception.Message}");
+            Log.Error($"Error reading command: {exception.Message}");
         }
     }
 
