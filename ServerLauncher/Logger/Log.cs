@@ -96,7 +96,7 @@ namespace ServerLauncher.Logger
         }
 
         /// <summary>
-        /// Формирует сообщение для логов, добавляя ему цвет, время и тег уровня логгирования
+        /// Формирует сообщение для логов, добавляя ему цвет и время
         /// </summary>
         /// <param name="message">Сообщение</param>
         /// <param name="serverId"></param>
@@ -144,18 +144,25 @@ namespace ServerLauncher.Logger
                 return;
             }
 
-            writer.Write(message);
-
-            if (!message.EndsWith(Environment.NewLine))
+            try
             {
-                writer.WriteLine();
+                writer.Write(message);
+
+                if (!message.EndsWith(Environment.NewLine))
+                {
+                    writer.WriteLine();
+                }
+
+                writer.Flush();
+
+                Console.ForegroundColor = color;
+                Console.WriteLine(message);
+                Console.ResetColor();
             }
-
-            writer.Flush();
-
-            Console.ForegroundColor = color;
-            Console.WriteLine(message);
-            Console.ResetColor();
+            catch (Exception)
+            {
+                Error("Error while logging for Laucnher", serverId);
+            }
         }
     }
 }
