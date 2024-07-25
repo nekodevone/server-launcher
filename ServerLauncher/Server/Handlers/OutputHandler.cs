@@ -188,7 +188,7 @@ public class OutputHandler
 				// 	break;
 
 				default:
-					Program.Logger.Debug(
+					Logger.Log.Debug(
 						nameof(HandleAction),
 						$"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.");
 					break;

@@ -359,14 +359,14 @@ public class Server
                 catch (Exception exception)
                 {
                     Error(exception.Message);
-                    Program.Logger.Error(nameof(Start), exception.Message);
+                    Logger.Log.Error(nameof(Start), exception.Message);
                     Error("Shutdown failed...");
                 }
             }
             catch (Exception exception)
             {
                 Error(exception.Message);
-                Program.Logger.Error(nameof(Start), exception.Message);
+                Logger.Log.Error(nameof(Start), exception.Message);
 
                 // If the server should try to start up again
                 if (Config.ServerStartRetry)
@@ -438,34 +438,34 @@ public class Server
 
     public void Log(object message)
     {
-        Program.Logger.Log("SERVER", message);
+        Logger.Log.Info(message.ToString());
     }
 
     public void Error(object message)
     {
-        Program.Logger.Error("SERVER", message);
+        Logger.Log.Error(message.ToString());
     }
 
     public void Warn(object message)
     {
-        Program.Logger.Warn("SERVER", message);
+        Logger.Log.Warning(message.ToString());
     }
 
     public void Debug(object message)
     {
-        Program.Logger.Debug("SERVER", message);
+        Logger.Log.Debug(message.ToString());
     }
 
     public void Message(object message, ConsoleColor consoleColor)
     {
-        Program.Logger.Message("SERVER", message, consoleColor);
+        Logger.Log.Info(message.ToString(), color: consoleColor);
     }
 
     public bool SendSocketMessage(string message)
     {
         if (Socket is null || !Socket.IsConnected)
         {
-            Program.Logger.Error("SERVER", "Unable to send command to server, the console is disconnected");
+            Logger.Log.Error("SERVER", "Unable to send command to server, the console is disconnected");
             return false;
         }
 
@@ -494,7 +494,7 @@ public class Server
                 var message =
                     $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                Program.Logger.Debug(nameof(Server), message);
+                Logger.Log.Debug(nameof(Server), message);
                 Log(message);
             }
             else

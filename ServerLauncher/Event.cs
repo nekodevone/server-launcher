@@ -1,3 +1,5 @@
+using ServerLauncher.Logger;
+
 namespace ServerLauncher.Server;
 
 public delegate void CustomEventHandler();
@@ -46,7 +48,7 @@ public class Event
             }
             catch (Exception ex)
             {
-                Program.Logger.Error( nameof(InvokeNormal), $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
+                Log.Error( nameof(InvokeNormal), $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
             }
         }
     }
