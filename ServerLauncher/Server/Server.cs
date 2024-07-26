@@ -3,7 +3,6 @@ using System.Reflection;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
-using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features;
@@ -27,6 +26,7 @@ public class Server
     private DateTime _initStopTimeoutTime;
 
     private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
+    private string _startDateTime;
 
     public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
     {
@@ -65,7 +65,7 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception.Message);
+                    SendError(exception.Message);
                 }
         }
     }
@@ -99,11 +99,6 @@ public class Server
     ///     Команды
     /// </summary>
     public Dictionary<string, ICommand> Commands => _commands;
-
-    /// <summary>
-    ///     Лист методов фич
-    /// </summary>
-    public List<IEventServerTick> Ticks { get; } = new();
 
     /// <summary>
     ///     Запущен ли процесс игры
@@ -253,7 +248,7 @@ public class Server
 
                 SupportModFeatures = ModFeatures.None;
 
-                ForEachHandler<IEventServerStarting>(eventPreStart => eventPreStart.OnServerStarting());
+                ServerEvents.OnStarting();
 
                 var inputHandlerCancellation = new CancellationTokenSource();
                 Task inputHandler = null;
@@ -295,9 +290,9 @@ public class Server
                         default:
                             Status = ServerStatusType.StoppedUnexpectedly;
 
-                            ForEachHandler<IEventServerCrashed>(eventCrash => eventCrash.OnServerCrashed());
+                            ServerEvents.OnCrashed();
 
-                            Log.Error("Game engine exited unexpectedly", Id);
+                            SendError("Game engine exited unexpectedly");
 
                             shouldRestart = restartOnCrash;
                             break;
@@ -332,8 +327,8 @@ public class Server
                 }
                 catch (Exception exception)
                 {
+                    SendError("Shutdown failed...");
                     Log.Error(exception.Message, Id);
-                    Log.Error("Shutdown failed...", Id);
                 }
             }
             catch (Exception exception)
@@ -349,17 +344,17 @@ public class Server
 
                     if (waitDelayMs > 0)
                     {
-                        Log.Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...", Id);
+                        SendError($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
                         Thread.Sleep(waitDelayMs);
                     }
                     else
                     {
-                        Log.Error("Startup failed! Retrying...", Id);
+                        SendError("Startup failed! Retrying...");
                     }
                 }
                 else
                 {
-                    Log.Error("Startup failed! Exiting...", Id);
+                    SendError("Startup failed! Exiting...");
                 }
             }
         } while (shouldRestart);
@@ -386,7 +381,7 @@ public class Server
         _initStopTimeoutTime = DateTime.Now;
         Status = killGame ? ServerStatusType.ForceStopping : ServerStatusType.Stopping;
 
-        ForEachHandler<IEventServerStopped>(stopEvent => stopEvent.OnServerStopped());
+        ServerEvents.OnStopped();
     }
 
     public void Stop(bool killGame = false)
@@ -406,6 +401,16 @@ public class Server
         Status = status;
 
         return true;
+    }
+
+    public void SendError(string message)
+    {
+        Log.Error(message, Id);
+    }
+
+    public void SendWarn(string message)
+    {
+        Log.Warning(message, Id);
     }
 
     public bool SendSocketMessage(string message)
@@ -431,46 +436,25 @@ public class Server
 
     public void RegisterFeature(ServerFeature serverFeature)
     {
-        switch (serverFeature)
+        if (serverFeature is ICommand command)
         {
-            case ICommand command:
+            var commandKey = command.Command.ToLower().Trim();
+
+            // If the command was already registered
+            if (_commands.ContainsKey(commandKey))
             {
-                var commandKey = command.Command.ToLower().Trim();
+                var message =
+                    $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                // If the command was already registered
-                if (_commands.ContainsKey(commandKey))
-                {
-                    var message =
-                        $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
-
-                    Log.Debug(message, Id);
-                    Log.Info(message, Id);
-                }
-                else
-                {
-                    _commands.Add(commandKey, command);
-                }
-
-                break;
+                Log.Debug(message, Id);
             }
-            case IEventServerTick serverTick:
-                Ticks.Add(serverTick);
-                break;
+            else
+            {
+                _commands.Add(commandKey, command);
+            }
         }
 
         _features.Add(serverFeature);
-    }
-
-    public void ForEachHandler<T>(Action<T> action) where T : IEvent
-    {
-        foreach (var feature in _features)
-        {
-            if (!feature.IsEnabled) continue;
-
-            if (feature is not T eventHandler) continue;
-
-            action.Invoke(eventHandler);
-        }
     }
 
     private void MainLoop()
@@ -481,18 +465,7 @@ public class Server
 
         while (IsGameProcessRunning)
         {
-            foreach (var tickEvent in Ticks)
-                try
-                {
-                    tickEvent.OnServerTick();
-                }
-                catch (Exception exception)
-                {
-                    Log.Error(exception.ToString(), Id);
-                    Log.Error("Tick event removed for this feature.", Id);
-
-                    Ticks.Remove(tickEvent);
-                }
+            ServerEvents.OnTick();
 
             timer.Stop();
 
@@ -502,19 +475,19 @@ public class Server
 
             if (Status is ServerStatusType.Restarting && CheckRestartTimeout)
             {
-                Log.Error("Server restart timed out, killing the server process...", Id);
+                SendError("Server restart timed out, killing the server process...");
                 Restart(true);
             }
 
             if (Status is ServerStatusType.Stopping && CheckStopTimeout)
             {
-                Log.Error("Server exit timed out, killing the server process...", Id);
+                SendError("Server exit timed out, killing the server process...");
                 Stop(true);
             }
 
             if (Status is not ServerStatusType.ForceStopping) continue;
 
-            Log.Error("Force stopping the server process...", Id);
+            SendError("Force stopping the server process...");
             Stop(true);
         }
     }

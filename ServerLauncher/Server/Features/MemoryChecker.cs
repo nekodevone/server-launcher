@@ -1,12 +1,10 @@
-using ServerLauncher.Interfaces.Events;
-using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features.Attributes;
 
 namespace ServerLauncher.Server.Features;
 
 [ServerFeature]
-public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundEnded
+public class MemoryChecker : ServerFeature
 {
     public MemoryChecker(Server server) : base(server)
     {
@@ -55,7 +53,7 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
     }
 
     public decimal MemoryUsedMb => decimal.Divide(MemoryUsedBytes, BytesInMegabyte);
-
+    
     public decimal MemoryLeftMb => decimal.Divide(MemoryLeftBytes, BytesInMegabyte);
 
     private const decimal BytesInMegabyte = 1048576;
@@ -77,7 +75,18 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
         _restart = false;
 
+        ServerEvents.Tick += OnServerTick;
+        ServerEvents.RoundEnded += OnServerRoundEnded;
+        
         base.Enabled();
+    }
+
+    public override void Disabled()
+    {
+        ServerEvents.Tick -= OnServerTick;
+        ServerEvents.RoundEnded -= OnServerRoundEnded;
+        
+        base.Disabled();
     }
 
     public override void ConfigReloaded()
@@ -93,12 +102,11 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
     public void OnServerTick()
     {
         if (LowBytes < 0 && LowBytesSoft < 0 || MaxBytes < 0) return;
-
+        
         if (_tickCount < _maxTicks && LowBytes >= 0 && MemoryLeftBytes <= LowBytes)
         {
-            Log.Warning(
-                $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart if it continues",
-                Server.Id);
+            Server.SendWarn(
+                $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart if it continues");
             _tickCount++;
         }
         else
@@ -108,9 +116,8 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
         if (!_restart && _tickCountSoft < _maxTicksSoft && LowBytesSoft >= 0 && MemoryLeftBytes <= LowBytesSoft)
         {
-            Log.Warning(
-                $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart at the end of the round if it continues",
-                Server.Id);
+            Server.SendWarn(
+                $"Program is running low on memory ({decimal.Round(MemoryLeftMb, OutputPrecision)} MB left), the server will restart at the end of the round if it continues");
             _tickCountSoft++;
         }
         else
@@ -122,14 +129,14 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
 
         if (_tickCount >= _maxTicks)
         {
-            Log.Error("Restarting due to low memory...", Server.Id);
+            Server.SendError("Restarting due to low memory...");
             Server.Restart();
 
             _restart = false;
         }
         else if (!_restart && _tickCountSoft >= _maxTicksSoft)
         {
-            Log.Warning("Server will restart at the end of the round due to low memory", Server.Id);
+            Server.SendWarn("Server will restart at the end of the round due to low memory");
 
             _restart = true;
         }
@@ -139,7 +146,7 @@ public class MemoryChecker : ServerFeature, IEventServerTick, IEventServerRoundE
     {
         if (!_restart || Server.IsStopping) return;
 
-        Log.Error("Restarting due to low memory (Round End)...");
+        Server.SendError("Restarting due to low memory (Round End)...");
 
         Server.Restart();
 

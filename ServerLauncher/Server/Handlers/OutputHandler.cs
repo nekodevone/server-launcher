@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using ServerLauncher.Interfaces.Events;
 using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.EventArgs;
@@ -9,11 +8,12 @@ namespace ServerLauncher.Server.Handlers;
 
 public class OutputHandler
 {
-    private static readonly Regex SmodRegex =
-        new(@"\[(DEBUG|INFO|WARN|ERROR)\] (\[.*?\]) (.*)", RegexOptions.Compiled | RegexOptions.Singleline);
+    public static readonly Regex SmodRegex =
+        new Regex(@"\[(DEBUG|INFO|WARN|ERROR)\] (\[.*?\]) (.*)", RegexOptions.Compiled | RegexOptions.Singleline);
 
-    private static readonly char[] TrimChars = ['.', ' ', '\t', '!', '?', ','];
-    private static readonly char[] EventSplitChars = [':'];
+    public static readonly char[] TrimChars = { '.', ' ', '\t', '!', '?', ',' };
+
+    public static readonly char[] EventSplitChars = new char[] { ':' };
 
     public OutputHandler(Server server)
     {
@@ -21,7 +21,7 @@ public class OutputHandler
     }
 
     // Temporary measure to handle round ends until the game updates to use this
-    private bool roundEndCodeUsed = false;
+    private const bool RoundEndCodeUsed = false;
 
     private readonly Server _server;
 
@@ -55,28 +55,26 @@ public class OutputHandler
             }
         }
 
-
         var lowerMessage = message.Message.ToLower();
         if (!_server.SupportModFeatures.HasFlag(ModFeatures.CustomEvents))
         {
             switch (lowerMessage.Trim(TrimChars))
             {
                 case "the round is about to restart! please wait":
-                    if (!roundEndCodeUsed)
-                        _server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+                    if (!RoundEndCodeUsed)
+                        ServerEvents.OnRoundEnded();
                     break;
 
                 case "new round has been started":
-                    _server.ForEachHandler<IEventServerRoundStarted>(roundStart =>
-                        roundStart.OnServerRoundStarted());
+                    ServerEvents.OnRoundStarted();
                     break;
 
                 case "level loaded. creating match":
-                    _server.ForEachHandler<IEventServerStarted>(serverStart => serverStart.OnServerStarted());
+                    ServerEvents.OnStarted();
                     break;
 
                 case "server full":
-                    _server.ForEachHandler<IEventServerFull>(serverFull => serverFull.OnServerFull());
+                    ServerEvents.OnFull();
                     break;
             }
         }
@@ -95,21 +93,20 @@ public class OutputHandler
             switch (@event)
             {
                 case "round-end-event":
-                    if (!roundEndCodeUsed)
-                        _server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+                    if (!RoundEndCodeUsed)
+                        ServerEvents.OnRoundEnded();
                     break;
 
                 case "round-start-event":
-                    _server.ForEachHandler<IEventServerRoundStarted>(roundStart =>
-                        roundStart.OnServerRoundStarted());
+                    ServerEvents.OnRoundStarted();
                     break;
 
                 case "server-start-event":
-                    _server.ForEachHandler<IEventServerStarted>(serverStart => serverStart.OnServerStarted());
+                    ServerEvents.OnStarted();
                     break;
 
                 case "server-full-event":
-                    _server.ForEachHandler<IEventServerFull>(serverFull => serverFull.OnServerFull());
+                    ServerEvents.OnFull();
                     break;
 
                 case "set-supported-features":
@@ -121,7 +118,7 @@ public class OutputHandler
                     break;
             }
 
-            // Don't print any ServerLauncher events
+            // Don't print any MultiAdmin events
             return;
         }
 
@@ -135,16 +132,15 @@ public class OutputHandler
             // This seems to show up at the waiting for players event
             case OutputCodes.RoundRestart:
                 _server.IsLoading = false;
-                _server.ForEachHandler<IEventServerWaitingForPlayers>(waitingForPlayers =>
-                    waitingForPlayers.OnServerWaitingForPlayers());
+                ServerEvents.OnWaitingForPlayers();
                 break;
 
             case OutputCodes.IdleEnter:
-                _server.ForEachHandler<IEventServerIdleEntered>(idleEnter => idleEnter.OnServerIdleEntered());
+                ServerEvents.OnIdleEntered();
                 break;
 
             case OutputCodes.IdleExit:
-                _server.ForEachHandler<IEventIdleExited>(idleExit => idleExit.OnServerIdleExited());
+                ServerEvents.OnIdleExited();
                 break;
 
             // Requests to reset the ExitAction status
@@ -174,8 +170,8 @@ public class OutputHandler
 
             default:
                 Log.Debug(
-                    $"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.",
-                    _server.Id);
+                    nameof(HandleAction),
+                    $"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.");
                 break;
         }
     }
