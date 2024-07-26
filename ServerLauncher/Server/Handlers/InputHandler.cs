@@ -81,12 +81,12 @@ public static class InputHandler
             Log.Error($"Error reading command: {exception.Message}");
         }
     }
-
+    
     private static async Task<string> ReadMessage(CancellationToken cancellationToken)
     {
         var isReading = true;
         
-        var command = string.Empty;
+        var message = string.Empty;
 
         while (isReading)
         {
@@ -107,10 +107,10 @@ public static class InputHandler
                         _selectedMessage = Messages.Count - 1;
                     }
 
-                    command = Messages[_selectedMessage];
+                    message = Messages[_selectedMessage];
                     
                     //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
-                    Console.Write($"\r{command}");
+                    Console.Write($"\r{message}");
 
                     break;
                 case ConsoleKey.DownArrow:
@@ -121,20 +121,33 @@ public static class InputHandler
                         _selectedMessage = 0;
                     }
                     
-                    command = Messages[_selectedMessage];
+                    message = Messages[_selectedMessage];
                     
                     //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
-                    Console.Write($"\r{command}");
+                    Console.Write($"\r{message}");
+                    
+                    break;
+                case ConsoleKey.Backspace or ConsoleKey.Delete:
+                    if (message.Length <= 0 || Console.CursorLeft <= 0)
+                    {
+                        break;
+                    }
+
+                    message = message[..^1];
+                    
+                    Console.CursorLeft -= 1;
+                    Console.Write(' ');
+                    Console.CursorLeft -= 1;
                     
                     break;
                 default:
-                    command += key.KeyChar;
+                    message += key.KeyChar;
                     Console.Write(key.KeyChar);
                     break;
             }
         }
 
-        return command;
+        return message;
     }
     
     private static async Task WaitForKey(CancellationToken cancellationToken)
