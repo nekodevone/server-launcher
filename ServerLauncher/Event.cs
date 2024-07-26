@@ -1,6 +1,6 @@
 using ServerLauncher.Logger;
 
-namespace ServerLauncher.Server;
+namespace ServerLauncher;
 
 public delegate void CustomEventHandler();
 
@@ -24,12 +24,12 @@ public class Event
     {
         InnerEvent += customEventHandler;
     }
-    
+
     public void Unsubscribe(CustomEventHandler customEventHandler)
     {
         InnerEvent -= customEventHandler;
     }
-    
+
     public void InvokeSafely()
     {
         InvokeNormal();
@@ -48,7 +48,8 @@ public class Event
             }
             catch (Exception ex)
             {
-                Log.Error( nameof(InvokeNormal), $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
+                Log.Error(
+                    $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
             }
         }
     }

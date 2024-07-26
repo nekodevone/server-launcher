@@ -7,171 +7,172 @@ using ServerLauncher.Server.Handlers.Enums;
 namespace ServerLauncher.Server.Handlers;
 
 public class OutputHandler
-	{
-		public static readonly Regex SmodRegex =
-			new Regex(@"\[(DEBUG|INFO|WARN|ERROR)\] (\[.*?\]) (.*)", RegexOptions.Compiled | RegexOptions.Singleline);
-		
-		public static readonly char[] TrimChars = { '.', ' ', '\t', '!', '?', ',' };
-		
-		public static readonly char[] EventSplitChars = new char[] {':'};
-		
-		public OutputHandler(Server server)
-		{
-			_server = server;
-		}
-		
-		// Temporary measure to handle round ends until the game updates to use this
-		private const bool RoundEndCodeUsed = false;
+{
+    public static readonly Regex SmodRegex =
+        new Regex(@"\[(DEBUG|INFO|WARN|ERROR)\] (\[.*?\]) (.*)", RegexOptions.Compiled | RegexOptions.Singleline);
 
-		private readonly Server _server;
+    public static readonly char[] TrimChars = { '.', ' ', '\t', '!', '?', ',' };
 
-		public void HandleMessage(object source, MessageEventArgs message)
-		{
-			if (string.IsNullOrEmpty(message.Message))
-			{
-				return;
-			}
+    public static readonly char[] EventSplitChars = new char[] { ':' };
 
-			// Smod2 loggers pretty printing
-			var match = SmodRegex.Match(message.Message);
+    public OutputHandler(Server server)
+    {
+        _server = server;
+    }
 
-			if (match.Success)
-			{
-				if (match.Groups.Count >= 3)
-				{
-					var logColor = match.Groups[1].Value.Trim() switch
-					{
-						"DEBUG" => ConsoleColor.DarkGray,
-						"INFO" => ConsoleColor.Green,
-						"WARN" => ConsoleColor.Yellow,
-						"ERROR" => ConsoleColor.Red,
-						_ => ConsoleColor.White
-					};
+    // Temporary measure to handle round ends until the game updates to use this
+    private const bool RoundEndCodeUsed = false;
 
-					Log.Info(message.Message, _server.Id, color: logColor);
+    private readonly Server _server;
 
-					// This return should be here
-					return;
-				}
-			}
+    public void HandleMessage(object source, MessageEventArgs message)
+    {
+        if (string.IsNullOrEmpty(message.Message))
+        {
+            return;
+        }
 
-			var lowerMessage = message.Message.ToLower();
-			if (!_server.SupportModFeatures.HasFlag(ModFeatures.CustomEvents))
-			{
-				switch (lowerMessage.Trim(TrimChars))
-				{
-					case "the round is about to restart! please wait":
-						if (!RoundEndCodeUsed)
-							ServerEvents.OnRoundEnded();
-						break;
+        // Smod2 loggers pretty printing
+        var match = SmodRegex.Match(message.Message);
 
-					case "new round has been started":
-						ServerEvents.OnRoundStarted();
-						break;
+        if (match.Success)
+        {
+            if (match.Groups.Count >= 3)
+            {
+                var logColor = match.Groups[1].Value.Trim() switch
+                {
+                    "DEBUG" => ConsoleColor.DarkGray,
+                    "INFO" => ConsoleColor.Green,
+                    "WARN" => ConsoleColor.Yellow,
+                    "ERROR" => ConsoleColor.Red,
+                    _ => ConsoleColor.White
+                };
 
-					case "level loaded. creating match":
-						ServerEvents.OnStarted();
-						break;
+                Log.Info(message.Message, _server.Id, color: logColor);
 
-					case "server full":
-						ServerEvents.OnFull();
-						break;
-				}
-			}
+                // This return should be here
+                return;
+            }
+        }
 
-			if (lowerMessage.StartsWith("multiadmin:"))
-			{
-				// 11 chars in "multiadmin:"
-				var eventMessage = message.Message.Substring(11);
+        var lowerMessage = message.Message.ToLower();
+        if (!_server.SupportModFeatures.HasFlag(ModFeatures.CustomEvents))
+        {
+            switch (lowerMessage.Trim(TrimChars))
+            {
+                case "the round is about to restart! please wait":
+                    if (!RoundEndCodeUsed)
+                        ServerEvents.OnRoundEnded();
+                    break;
 
-				// Split event and event data
-				var eventSplit = eventMessage.Split(EventSplitChars, 2);
+                case "new round has been started":
+                    ServerEvents.OnRoundStarted();
+                    break;
 
-				var @event = eventSplit[0].ToLower();
-				var eventData = eventSplit.Length > 1 ? eventSplit[1] : null; // Handle events with no data
+                case "level loaded. creating match":
+                    ServerEvents.OnStarted();
+                    break;
 
-				switch (@event)
-				{
-					case "round-end-event":
-						if (!RoundEndCodeUsed)
-							ServerEvents.OnRoundEnded();
-						break;
+                case "server full":
+                    ServerEvents.OnFull();
+                    break;
+            }
+        }
 
-					case "round-start-event":
-						ServerEvents.OnRoundStarted();
-						break;
+        if (lowerMessage.StartsWith("multiadmin:"))
+        {
+            // 11 chars in "multiadmin:"
+            var eventMessage = message.Message.Substring(11);
 
-					case "server-start-event":
-						ServerEvents.OnStarted();
-						break;
+            // Split event and event data
+            var eventSplit = eventMessage.Split(EventSplitChars, 2);
 
-					case "server-full-event":
-						ServerEvents.OnFull();
-						break;
+            var @event = eventSplit[0].ToLower();
+            var eventData = eventSplit.Length > 1 ? eventSplit[1] : null; // Handle events with no data
 
-					case "set-supported-features":
-						if (int.TryParse(eventData, out var supportedFeatures))
-						{
-							_server.SupportModFeatures = (ModFeatures)supportedFeatures;
-						}
-						break;
-				}
+            switch (@event)
+            {
+                case "round-end-event":
+                    if (!RoundEndCodeUsed)
+                        ServerEvents.OnRoundEnded();
+                    break;
 
-				// Don't print any MultiAdmin events
-				return;
-			}
-			
-			_server.Log(message.Message);
-		}
+                case "round-start-event":
+                    ServerEvents.OnRoundStarted();
+                    break;
 
-		public void HandleAction(object source, byte action)
-		{
-			switch ((OutputCodes)action)
-			{
-				// This seems to show up at the waiting for players event
-				case OutputCodes.RoundRestart:
-					_server.IsLoading = false;
-					ServerEvents.OnWaitingForPlayers();
-					break;
+                case "server-start-event":
+                    ServerEvents.OnStarted();
+                    break;
 
-				case OutputCodes.IdleEnter:
-					ServerEvents.OnIdleEntered();
-					break;
+                case "server-full-event":
+                    ServerEvents.OnFull();
+                    break;
 
-				case OutputCodes.IdleExit:
-					ServerEvents.OnIdleExited();
-					break;
+                case "set-supported-features":
+                    if (int.TryParse(eventData, out var supportedFeatures))
+                    {
+                        _server.SupportModFeatures = (ModFeatures)supportedFeatures;
+                    }
 
-				// Requests to reset the ExitAction status
-				case OutputCodes.ExitActionReset:
-					_server.SetServerRequestedStatus(ServerStatusType.Running);
-					break;
+                    break;
+            }
 
-				// Requests the Shutdown ExitAction with the intent to restart at any time in the future
-				case OutputCodes.ExitActionShutdown:
-					_server.SetServerRequestedStatus(ServerStatusType.ExitActionStop);
-					break;
+            // Don't print any MultiAdmin events
+            return;
+        }
 
-				// Requests the SilentShutdown ExitAction with the intent to restart at any time in the future
-				case OutputCodes.ExitActionSilentShutdown:
-					_server.SetServerRequestedStatus(ServerStatusType.ExitActionStop);
-					break;
+        Log.Info(message.Message, _server.Id);
+    }
 
-				// Requests the Restart ExitAction status with the intent to restart at any time in the future
-				case OutputCodes.ExitActionRestart:
-					_server.SetServerRequestedStatus(ServerStatusType.ExitActionRestart);
-					break;
+    public void HandleAction(object source, byte action)
+    {
+        switch ((OutputCodes)action)
+        {
+            // This seems to show up at the waiting for players event
+            case OutputCodes.RoundRestart:
+                _server.IsLoading = false;
+                ServerEvents.OnWaitingForPlayers();
+                break;
 
-				// case OutputCodes.RoundEnd:
-				// 	roundEndCodeUsed = true;
-				// 	server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
-				// 	break;
+            case OutputCodes.IdleEnter:
+                ServerEvents.OnIdleEntered();
+                break;
 
-				default:
-					Log.Debug(
-						nameof(HandleAction),
-						$"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.");
-					break;
-			}
-		}
-	}
+            case OutputCodes.IdleExit:
+                ServerEvents.OnIdleExited();
+                break;
+
+            // Requests to reset the ExitAction status
+            case OutputCodes.ExitActionReset:
+                _server.SetServerRequestedStatus(ServerStatusType.Running);
+                break;
+
+            // Requests the Shutdown ExitAction with the intent to restart at any time in the future
+            case OutputCodes.ExitActionShutdown:
+                _server.SetServerRequestedStatus(ServerStatusType.ExitActionStop);
+                break;
+
+            // Requests the SilentShutdown ExitAction with the intent to restart at any time in the future
+            case OutputCodes.ExitActionSilentShutdown:
+                _server.SetServerRequestedStatus(ServerStatusType.ExitActionStop);
+                break;
+
+            // Requests the Restart ExitAction status with the intent to restart at any time in the future
+            case OutputCodes.ExitActionRestart:
+                _server.SetServerRequestedStatus(ServerStatusType.ExitActionRestart);
+                break;
+
+            // case OutputCodes.RoundEnd:
+            // 	roundEndCodeUsed = true;
+            // 	server.ForEachHandler<IEventServerRoundEnded>(roundEnd => roundEnd.OnServerRoundEnded());
+            // 	break;
+
+            default:
+                Log.Debug(
+                    nameof(HandleAction),
+                    $"Received unknown output code ({action}), is MultiAdmin up to date? This error can probably be safely ignored.");
+                break;
+        }
+    }
+}

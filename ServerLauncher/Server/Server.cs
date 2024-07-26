@@ -3,6 +3,7 @@ using System.Reflection;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
+using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Features;
 using ServerLauncher.Server.Features.Attributes;
@@ -64,7 +65,7 @@ public class Server
                 }
                 catch (Exception exception)
                 {
-                    Error(exception.Message);
+                    SendError(exception.Message);
                 }
         }
     }
@@ -201,37 +202,6 @@ public class Server
     public DateTime StartTime { get; private set; }
 
     /// <summary>
-    ///     Время запуска в виде строки
-    /// </summary>
-    public string StartDateTime
-    {
-        get => _startDateTime;
-
-        private set
-        {
-            _startDateTime = value;
-
-            // Update related variables
-            LogDirectoryFile = string.IsNullOrEmpty(value) || string.IsNullOrEmpty(LogDirectory)
-                ? null
-                : $"{Path.Combine(LogDirectory.EscapeFormat(), value)}_{{0}}_log_{Port}.txt";
-
-            lock (this)
-            {
-                LogDirectory = string.IsNullOrEmpty(LogDirectoryFile) ? null : string.Format(LogDirectoryFile, "MA");
-                GameLogDirectoryFile = string.IsNullOrEmpty(LogDirectoryFile)
-                    ? null
-                    : string.Format(LogDirectoryFile, "SCP");
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Путь к файлу логов
-    /// </summary>
-    public string LogDirectoryFile { get; private set; }
-
-    /// <summary>
     ///     Путь к файлу логов игры
     /// </summary>
     public string GameLogDirectoryFile { get; private set; }
@@ -244,7 +214,7 @@ public class Server
 
     public void Start(bool restartOnCrash = true)
     {
-        if (Status is ServerStatusType.Running) throw new ServerAlreadyRunningException();
+        if (!IsStopped) throw new ServerAlreadyRunningException();
 
         var shouldRestart = false;
 
@@ -255,17 +225,17 @@ public class Server
 
             try
             {
-                Log($"{Id} is executing...");
+                Program.Logger.InitializeServerLogger(Id, LogDirectory);
 
-                var socket = new ServerSocket((int)Port);
+                Log.Info($"{Id} is executing...", Id);
+
+                var consolePort = (int)Port + 100;
+                var socket = new ServerSocket(consolePort);
                 socket.Connect();
 
                 Socket = socket;
 
-                SetLogsDirectories();
-
-                //Аргуменыт доделать надо, конфиг нужен а его нет
-                var arguments = GetArguments(socket.Port);
+                var arguments = GetArguments(consolePort);
 
                 var exe = Utilities.GetExecutablePath();
 
@@ -274,7 +244,7 @@ public class Server
                     CreateNoWindow = true, UseShellExecute = false
                 };
 
-                Log($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}");
+                Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}", Id);
 
                 SupportModFeatures = ModFeatures.None;
 
@@ -322,7 +292,7 @@ public class Server
 
                             ServerEvents.OnCrashed();
 
-                            Error("Game engine exited unexpectedly");
+                            SendError("Game engine exited unexpectedly");
 
                             shouldRestart = restartOnCrash;
                             break;
@@ -354,19 +324,16 @@ public class Server
                     socket.OnReceiveAction -= outputHandler.HandleAction;
 
                     Socket = null;
-                    StartDateTime = null;
                 }
                 catch (Exception exception)
                 {
-                    Error(exception.Message);
-                    Logger.Log.Error(nameof(Start), exception.Message);
-                    Error("Shutdown failed...");
+                    SendError("Shutdown failed...");
+                    Log.Error(exception.Message, Id);
                 }
             }
             catch (Exception exception)
             {
-                Error(exception.Message);
-                Logger.Log.Error(nameof(Start), exception.Message);
+                Log.Error(exception.Message, Id);
 
                 // If the server should try to start up again
                 if (Config.ServerStartRetry)
@@ -377,17 +344,17 @@ public class Server
 
                     if (waitDelayMs > 0)
                     {
-                        Error($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
+                        SendError($"Startup failed! Waiting for {waitDelayMs} ms before retrying...");
                         Thread.Sleep(waitDelayMs);
                     }
                     else
                     {
-                        Error("Startup failed! Retrying...");
+                        SendError("Startup failed! Retrying...");
                     }
                 }
                 else
                 {
-                    Error("Startup failed! Exiting...");
+                    SendError("Startup failed! Exiting...");
                 }
             }
         } while (shouldRestart);
@@ -436,36 +403,21 @@ public class Server
         return true;
     }
 
-    public void Log(object message)
+    public void SendError(string message)
     {
-        Logger.Log.Info(message.ToString());
+        Log.Error(message, Id);
     }
 
-    public void Error(object message)
+    public void SendWarn(string message)
     {
-        Logger.Log.Error(message.ToString());
-    }
-
-    public void Warn(object message)
-    {
-        Logger.Log.Warning(message.ToString());
-    }
-
-    public void Debug(object message)
-    {
-        Logger.Log.Debug(message.ToString());
-    }
-
-    public void Message(object message, ConsoleColor consoleColor)
-    {
-        Logger.Log.Info(message.ToString(), color: consoleColor);
+        Log.Warning(message, Id);
     }
 
     public bool SendSocketMessage(string message)
     {
         if (Socket is null || !Socket.IsConnected)
         {
-            Logger.Log.Error("SERVER", "Unable to send command to server, the console is disconnected");
+            Log.Error("Unable to send command to server, the console is disconnected", Id);
             return false;
         }
 
@@ -494,8 +446,7 @@ public class Server
                 var message =
                     $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
 
-                Logger.Log.Debug(nameof(Server), message);
-                Log(message);
+                Log.Debug(message, Id);
             }
             else
             {
@@ -524,38 +475,20 @@ public class Server
 
             if (Status is ServerStatusType.Restarting && CheckRestartTimeout)
             {
-                Error("Server restart timed out, killing the server process...");
+                SendError("Server restart timed out, killing the server process...");
                 Restart(true);
             }
 
             if (Status is ServerStatusType.Stopping && CheckStopTimeout)
             {
-                Error("Server exit timed out, killing the server process...");
+                SendError("Server exit timed out, killing the server process...");
                 Stop(true);
             }
 
             if (Status is not ServerStatusType.ForceStopping) continue;
 
-            Error("Force stopping the server process...");
+            SendError("Force stopping the server process...");
             Stop(true);
-        }
-    }
-
-    /// <summary>
-    ///     Устанавливает пути к файлам логов
-    /// </summary>
-    private void SetLogsDirectories()
-    {
-        var time = StartTime.ToString();
-
-        var directory = string.IsNullOrEmpty(time) || string.IsNullOrEmpty(LogDirectory)
-            ? null
-            : $"{Path.Combine(LogDirectory.EscapeFormat(), time)}_{{0}}_log_{Port}.txt";
-
-        lock (this)
-        {
-            LogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "MA");
-            GameLogDirectoryFile = string.IsNullOrEmpty(directory) ? null : string.Format(directory, "SCP");
         }
     }
 
