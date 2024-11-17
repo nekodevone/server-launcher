@@ -95,6 +95,50 @@ namespace ServerLauncher.Logger
             Send(message, serverId, ConsoleColor.DarkGray);
         }
 
+        public static void Stdout(string serverId, string message, bool isError = false)
+        {
+            var logType = isError ? "stderr" : "stdout";
+
+            if (Instance is null)
+            {
+                Error("Unable to send stdout log: Instance is null");
+                return;
+            }
+
+            if (!Instance._streamWriters.TryGetValue(serverId, out var mainWriter))
+            {
+                Error($"No logger initialized for server {serverId}. Stdout log cannot be created.");
+                return;
+            }
+
+            var logFilePath = ((FileStream)mainWriter.BaseStream).Name;
+            var logDirectory = Path.GetDirectoryName(logFilePath);
+
+            if (logDirectory == null)
+            {
+                Error($"Failed to determine log directory for server {serverId}");
+                return;
+            }
+
+            var stdoutLogPath = Path.Combine(logDirectory, $"stdout-{Utilities.DateTime}.log");
+
+            try
+            {
+                using (var writer = File.AppendText(stdoutLogPath))
+                {
+                    var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    var formattedMessage = $"[{timestamp}] [{logType}] {message}";
+
+                    writer.WriteLine(formattedMessage);
+                    writer.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                Error($"Failed to log {logType} for server {serverId}: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Формирует сообщение для логов, добавляя ему цвет и время
         /// </summary>

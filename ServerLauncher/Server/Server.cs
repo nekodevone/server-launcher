@@ -275,7 +275,7 @@ public class Server
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        Log.Info($"[stdout]: {e.Data}", Id);
+                        Log.Stdout(Id, e.Data);
                     }
                 };
 
@@ -283,7 +283,7 @@ public class Server
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        Log.Error($"[stderr]: {e.Data}", Id);
+                        Log.Stdout(Id, e.Data, true);
                     }
                 };
 
