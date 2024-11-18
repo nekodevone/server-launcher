@@ -1,4 +1,5 @@
-﻿using ServerLauncher.Logger;
+﻿using ServerLauncher.Config;
+using ServerLauncher.Logger;
 using ServerLauncher.NativeExitSignal;
 using ServerLauncher.Utility;
 
@@ -10,7 +11,9 @@ public static class Program
 
     public static Version Version { get; } = new(1, 0, 0);
 
-    public static Config.Config GlobalConfig = new(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
+    public static ConfigLoader ConfigLoader { get; set; }
+
+    public static LauncherConfig LauncherConfig { get; set; }
 
     private static readonly List<Server.Server> InstantiatedServers = [];
 
@@ -28,8 +31,10 @@ public static class Program
 
     public static void Main()
     {
-        GlobalConfig = GlobalConfig.Load();
-        Log.Instance = new Log(GlobalConfig.LogLocation);
+        ConfigLoader = new ConfigLoader();
+        LauncherConfig = ConfigLoader.Load<LauncherConfig>(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
+
+        Log.Instance = new Log(LauncherConfig.LogsDir);
 
         AppDomain.CurrentDomain.ProcessExit += OnExit;
 
@@ -125,7 +130,7 @@ public static class Program
                     server.Stop();
 
                     // Wait for server to exit
-                    var timeToWait = Math.Max(server.Config.SafeShutdownCheckDelay, 0);
+                    var timeToWait = Math.Max(LauncherConfig.SafeShutdownCheckDelay, 0);
                     var timeWaited = 0;
 
                     while (server.IsGameProcessRunning)
@@ -133,7 +138,7 @@ public static class Program
                         Thread.Sleep(timeToWait);
                         timeWaited += timeToWait;
 
-                        if (timeWaited < server.Config.SafeShutdownTimeout)
+                        if (timeWaited < LauncherConfig.SafeShutdownTimeout)
                         {
                             continue;
                         }

@@ -70,7 +70,7 @@ namespace ServerLauncher.Logger
         /// </summary>
         /// <param name="message">Сообщение</param>
         /// <param name="serverId"></param>
-        public static void Warning(string message, string serverId = "default")
+        public static void Warn(string message, string serverId = "default")
         {
             Send(message, serverId, ConsoleColor.Yellow);
         }
@@ -162,6 +162,8 @@ namespace ServerLauncher.Logger
         {
             if (Instance is null)
             {
+                Console.Error.WriteLine("Launcher has attempted to send a log when the server has not been initialized:");
+                Console.Error.WriteLine(message);
                 return;
             }
 
@@ -200,8 +202,8 @@ namespace ServerLauncher.Logger
                 writer.Flush();
 
                 Console.ForegroundColor = color;
-                Console.WriteLine(message);
                 Console.ResetColor();
+                Console.WriteLine(message);
             }
             catch (Exception)
             {

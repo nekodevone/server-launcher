@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
@@ -15,60 +16,6 @@ public class Server
 {
     public const int RxBufferSize = 25000;
     public const int TxBufferSize = 200000;
-
-    private static readonly Dictionary<string, ICommand> _commands = new();
-
-    private readonly uint? port;
-
-    private readonly List<ServerFeature> _features = new();
-    private DateTime _initRestartTimeoutTime;
-
-    private DateTime _initStopTimeoutTime;
-
-    private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
-    private string _startDateTime;
-
-    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
-    {
-        Id = id;
-        ServerDir = string.IsNullOrEmpty(Id)
-            ? null
-            : Utilities.GetFullPathSafe(Path.Combine(Program.GlobalConfig.ServersFolder, Id));
-
-        ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
-                         Utilities.GetFullPathSafe(Program.GlobalConfig.ConfigLocation) ??
-                         Utilities.GetFullPathSafe(ServerDir);
-
-        this.port = port;
-
-        Arguments = args;
-
-        Config = new Config.Config(Path.Combine(ConfigLocation, "config.yml"));
-        Config = Config.Load();
-
-        LogDirectory = Utilities.GetFullPathSafe(Path.Combine(string.IsNullOrEmpty(ServerDir) ? "" : ServerDir,
-            Config.LogLocation));
-
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            var features = assembly.GetTypes().Where(type =>
-                type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
-
-            foreach (var feature in features)
-                try
-                {
-                    var instance = Activator.CreateInstance(feature, this);
-
-                    if (instance is not ServerFeature serverFeature) continue;
-
-                    RegisterFeature(serverFeature);
-                }
-                catch (Exception exception)
-                {
-                    SendError(exception.Message);
-                }
-        }
-    }
 
     /// <summary>
     ///     Айди
@@ -88,7 +35,7 @@ public class Server
     /// <summary>
     ///     Конфиг
     /// </summary>
-    public Config.Config Config { get; }
+    public ServerConfig Config { get; }
 
     /// <summary>
     ///     Фичи
@@ -167,8 +114,8 @@ public class Server
     /// <summary>
     ///     Выключен ли
     /// </summary>
-    public bool IsStopped => Status is ServerStatusType.NotStarted || Status is ServerStatusType.Stopped ||
-                             Status is ServerStatusType.StoppedUnexpectedly;
+    public bool IsStopped => Status is ServerStatusType.NotStarted or ServerStatusType.Stopped
+        or ServerStatusType.StoppedUnexpectedly;
 
     /// <summary>
     ///     Запущен ли
@@ -188,8 +135,8 @@ public class Server
     /// <summary>
     ///     Выключается ли
     /// </summary>
-    public bool IsStopping => Status is ServerStatusType.Stopping || Status is ServerStatusType.ForceStopping ||
-                              Status is ServerStatusType.Restarting;
+    public bool IsStopping =>
+        Status is ServerStatusType.Stopping or ServerStatusType.ForceStopping or ServerStatusType.Restarting;
 
     /// <summary>
     ///     Загружается ли
@@ -207,10 +154,62 @@ public class Server
     public string GameLogDirectoryFile { get; private set; }
 
     public bool CheckStopTimeout =>
-        (DateTime.Now - _initStopTimeoutTime).Seconds > Config.ServerStopTimeout;
+        (DateTime.Now - _initStopTimeoutTime).Seconds > Program.LauncherConfig.ServerStopTimeout;
 
     public bool CheckRestartTimeout =>
-        (DateTime.Now - _initRestartTimeoutTime).Seconds > Config.ServerRestartTimeout;
+        (DateTime.Now - _initRestartTimeoutTime).Seconds > Program.LauncherConfig.ServerRestartTimeout;
+
+    private static readonly Dictionary<string, ICommand> _commands = new();
+
+    private readonly uint? port;
+
+    private readonly List<ServerFeature> _features = new();
+    private DateTime _initRestartTimeoutTime;
+
+    private DateTime _initStopTimeoutTime;
+
+    private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
+    private string _startDateTime;
+
+    public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
+    {
+        Id = id;
+
+        ServerDir = string.IsNullOrEmpty(Id)
+            ? null
+            : Utilities.GetFullPathSafe(Path.Combine(Program.LauncherConfig.ConfigDir, Id));
+
+        ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
+                         Utilities.GetFullPathSafe(ServerDir);
+
+        this.port = port;
+
+        Arguments = args;
+
+        Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "config.yml"));
+
+        LogDirectory = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var features = assembly.GetTypes().Where(type =>
+                type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
+
+            foreach (var feature in features)
+                try
+                {
+                    var instance = Activator.CreateInstance(feature, this);
+
+                    if (instance is not ServerFeature serverFeature) continue;
+
+                    RegisterFeature(serverFeature);
+                }
+                catch (Exception exception)
+                {
+                    SendError(exception.Message);
+                }
+        }
+    }
 
     public void Start(bool restartOnCrash = true)
     {
@@ -363,11 +362,11 @@ public class Server
                 Log.Error(exception.Message, Id);
 
                 // If the server should try to start up again
-                if (Config.ServerStartRetry)
+                if (Program.LauncherConfig.ServerStartRetry)
                 {
                     shouldRestart = true;
 
-                    var waitDelayMs = Config.ServerStartRetryDelay;
+                    var waitDelayMs = Program.LauncherConfig.ServerStartRetryDelay;
 
                     if (waitDelayMs > 0)
                     {
@@ -437,7 +436,7 @@ public class Server
 
     public void SendWarn(string message)
     {
-        Log.Warning(message, Id);
+        Log.Warn(message, Id);
     }
 
     public bool SendSocketMessage(string message)
@@ -496,7 +495,7 @@ public class Server
 
             timer.Stop();
 
-            Thread.Sleep(Math.Max(Config.TickDelay - timer.Elapsed.Milliseconds, 0));
+            Thread.Sleep(Math.Max(Program.LauncherConfig.TickDelay - timer.Elapsed.Milliseconds, 0));
 
             timer.Restart();
 
