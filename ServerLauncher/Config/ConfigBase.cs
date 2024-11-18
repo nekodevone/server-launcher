@@ -14,9 +14,12 @@ namespace ServerLauncher.Config
         [YamlIgnore]
         public string FilePath { get; set; }
 
+        private FileInfo _fileInfo;
+
         public ConfigBase(string filePath)
         {
             FilePath = filePath;
+            _fileInfo = new FileInfo(filePath);
         }
 
         public ConfigBase()
@@ -75,9 +78,11 @@ namespace ServerLauncher.Config
         {
             var serializer = new SerializerBuilder().Build();
             var yaml = serializer.Serialize(this);
-
+            
             if (yaml != null)
             {
+                _fileInfo.Directory.Create();
+                
                 File.WriteAllText(FilePath, yaml, Encoding.UTF8);
             }
         }
