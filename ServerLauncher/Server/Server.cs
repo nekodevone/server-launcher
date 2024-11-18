@@ -241,7 +241,10 @@ public class Server
 
                 var startInfo = new ProcessStartInfo(exe, arguments.JoinArguments())
                 {
-                    CreateNoWindow = true, UseShellExecute = false
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
                 };
 
                 Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}", Id);
@@ -262,7 +265,32 @@ public class Server
                 socket.OnReceiveMessage += outputHandler.HandleMessage;
                 socket.OnReceiveAction += outputHandler.HandleAction;
 
-                GameProcess = Process.Start(startInfo);
+                GameProcess = new Process
+                {
+                    StartInfo = startInfo,
+                    EnableRaisingEvents = true
+                };
+
+                GameProcess.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Log.Stdout(Id, e.Data);
+                    }
+                };
+
+                GameProcess.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Log.Stdout(Id, e.Data, true);
+                    }
+                };
+
+                GameProcess.Start();
+
+                GameProcess.BeginOutputReadLine();
+                GameProcess.BeginErrorReadLine();
 
                 Status = ServerStatusType.Running;
 
@@ -278,7 +306,6 @@ public class Server
                         case ServerStatusType.ForceStopping:
                         case ServerStatusType.ExitActionStop:
                             Status = ServerStatusType.Stopped;
-
                             shouldRestart = false;
                             break;
 
