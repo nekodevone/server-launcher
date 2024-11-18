@@ -32,7 +32,8 @@ namespace ServerLauncher
         public static void Main()
         {
             ConfigLoader = new ConfigLoader();
-            LauncherConfig = ConfigLoader.Load<LauncherConfig>(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
+            LauncherConfig =
+                ConfigLoader.Load<LauncherConfig>(Path.Combine(Directory.GetCurrentDirectory(), "config.yml"));
 
             Log.Instance = new Log(LauncherConfig.LogsDir);
 

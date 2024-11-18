@@ -162,7 +162,8 @@ namespace ServerLauncher.Logger
         {
             if (Instance is null)
             {
-                Console.Error.WriteLine("Launcher has attempted to send a log when the server has not been initialized:");
+                Console.Error.WriteLine(
+                    "Launcher has attempted to send a log when the server has not been initialized:");
                 Console.Error.WriteLine(message);
                 return;
             }

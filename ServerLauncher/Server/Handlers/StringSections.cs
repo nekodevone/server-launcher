@@ -10,7 +10,7 @@ namespace ServerLauncher.Server.Handlers
         {
             Sections = sections;
         }
-    
+
         public StringSection[] Sections { get; }
 
         public StringSection? GetSection(int index, out int sectionIndex)
@@ -25,7 +25,7 @@ namespace ServerLauncher.Server.Handlers
                 {
                     continue;
                 }
-            
+
                 sectionIndex = i;
                 return stringSection;
             }
@@ -90,7 +90,7 @@ namespace ServerLauncher.Server.Handlers
                 {
                     continue;
                 }
-            
+
                 // Copy the section base message and replace the text
                 var section = sectionBase.Clone();
                 section.Text = curSecBuilder.ToString();

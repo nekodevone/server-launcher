@@ -4,8 +4,8 @@ namespace ServerLauncher.Server.Handlers
 {
     public static class InputHandler
     {
-        private static readonly char[] Separator = {' '};
-    
+        private static readonly char[] Separator = { ' ' };
+
         private static readonly List<string> Messages = new();
 
         private static int _selectedMessage;
@@ -50,7 +50,7 @@ namespace ServerLauncher.Server.Handlers
 
                         continue;
                     }
-                
+
                     Log.Info($">>> {message}", color: ConsoleColor.DarkMagenta);
 
                     //Является ли команда не лаунчера
@@ -81,19 +81,19 @@ namespace ServerLauncher.Server.Handlers
                 Log.Error($"Error reading command: {exception.Message}");
             }
         }
-    
+
         private static async Task<string> ReadMessage(CancellationToken cancellationToken)
         {
             var isReading = true;
-        
+
             var message = string.Empty;
 
             while (isReading)
             {
                 await WaitForKey(cancellationToken);
-            
+
                 var key = Console.ReadKey(true);
-            
+
                 switch (key.Key)
                 {
                     case ConsoleKey.Enter:
@@ -108,7 +108,7 @@ namespace ServerLauncher.Server.Handlers
                         }
 
                         message = Messages[_selectedMessage];
-                    
+
                         //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                         Console.Write($"\r{message}");
 
@@ -120,12 +120,12 @@ namespace ServerLauncher.Server.Handlers
                         {
                             _selectedMessage = 0;
                         }
-                    
+
                         message = Messages[_selectedMessage];
-                    
+
                         //\r знак нужен, чтобы очистить строку и заменить её этой (очищаем строку с командой которую мы ввели)
                         Console.Write($"\r{message}");
-                    
+
                         break;
                     case ConsoleKey.Backspace or ConsoleKey.Delete:
                         if (message.Length <= 0 || Console.CursorLeft <= 0)
@@ -134,11 +134,11 @@ namespace ServerLauncher.Server.Handlers
                         }
 
                         message = message[..^1];
-                    
+
                         Console.CursorLeft -= 1;
                         Console.Write(' ');
                         Console.CursorLeft -= 1;
-                    
+
                         break;
                     default:
                         message += key.KeyChar;
@@ -149,7 +149,7 @@ namespace ServerLauncher.Server.Handlers
 
             return message;
         }
-    
+
         private static async Task WaitForKey(CancellationToken cancellationToken)
         {
             while (!Console.KeyAvailable)
@@ -159,4 +159,3 @@ namespace ServerLauncher.Server.Handlers
         }
     }
 }
-

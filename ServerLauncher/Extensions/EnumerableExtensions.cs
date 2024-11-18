@@ -12,7 +12,7 @@ namespace ServerLauncher.Extensions
         public static string JoinArguments(this IEnumerable<string> arguments)
         {
             var argsStringBuilder = new StringBuilder();
-        
+
             foreach (var argument in arguments)
             {
                 if (argument == string.Empty)
@@ -20,9 +20,9 @@ namespace ServerLauncher.Extensions
 
                 // Escape escape characters (if not on Windows) and quotation marks
                 var escapedArgument =
-                    OperatingSystem.IsWindows() ?
-                        argument.Replace("\"", "\\\"") :
-                        argument.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                    OperatingSystem.IsWindows()
+                        ? argument.Replace("\"", "\\\"")
+                        : argument.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
                 // Separate with spaces
                 if (argsStringBuilder.Length > 0)

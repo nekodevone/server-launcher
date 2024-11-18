@@ -53,7 +53,7 @@ namespace ServerLauncher.Server.Features
         }
 
         public decimal MemoryUsedMb => decimal.Divide(MemoryUsedBytes, BytesInMegabyte);
-    
+
         public decimal MemoryLeftMb => decimal.Divide(MemoryLeftBytes, BytesInMegabyte);
 
         private const decimal BytesInMegabyte = 1048576;
@@ -77,7 +77,7 @@ namespace ServerLauncher.Server.Features
 
             ServerEvents.Tick += OnServerTick;
             ServerEvents.RoundEnded += OnServerRoundEnded;
-        
+
             base.Enabled();
         }
 
@@ -85,7 +85,7 @@ namespace ServerLauncher.Server.Features
         {
             ServerEvents.Tick -= OnServerTick;
             ServerEvents.RoundEnded -= OnServerRoundEnded;
-        
+
             base.Disabled();
         }
 
@@ -102,7 +102,7 @@ namespace ServerLauncher.Server.Features
         public void OnServerTick()
         {
             if (LowBytes < 0 && LowBytesSoft < 0 || MaxBytes < 0) return;
-        
+
             if (_tickCount < _maxTicks && LowBytes >= 0 && MemoryLeftBytes <= LowBytes)
             {
                 Server.SendWarn(

@@ -1,88 +1,88 @@
 namespace ServerLauncher.Server.Data
 {
-	public class ColoredMessage : ICloneable
-	{
-		public ColoredMessage(string text, ConsoleColor textColor = ConsoleColor.White)
-		{
-			Text = text;
-			TextColor = textColor;
-		}
-	
-		public string Text { get; set; }
-		public ConsoleColor TextColor { get; set; }
+    public class ColoredMessage : ICloneable
+    {
+        public ColoredMessage(string text, ConsoleColor textColor = ConsoleColor.White)
+        {
+            Text = text;
+            TextColor = textColor;
+        }
 
-		public int Length => Text?.Length ?? 0;
+        public string Text { get; set; }
+        public ConsoleColor TextColor { get; set; }
 
-		public bool Equals(ColoredMessage other) => string.Equals(Text, other.Text) && TextColor == other.TextColor;
+        public int Length => Text?.Length ?? 0;
 
-		public void Write()
-		{
-			lock (Utilities.Lock)
-			{
-				var lastColor = Console.ForegroundColor;
+        public bool Equals(ColoredMessage other) => string.Equals(Text, other.Text) && TextColor == other.TextColor;
 
-				Console.ForegroundColor = TextColor;
-				Console.WriteLine(Text);
-				Console.ForegroundColor = lastColor;
-			}
-		}
-	
-		public override bool Equals(object obj)
-		{
-			if (ReferenceEquals(null, obj))
-			{
-				return false;
-			}
+        public void Write()
+        {
+            lock (Utilities.Lock)
+            {
+                var lastColor = Console.ForegroundColor;
 
-			if (ReferenceEquals(this, obj))
-			{
-				return true;
-			}
+                Console.ForegroundColor = TextColor;
+                Console.WriteLine(Text);
+                Console.ForegroundColor = lastColor;
+            }
+        }
 
-			if (obj.GetType() != GetType())
-			{
-				return false;
-			}
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj))
+            {
+                return false;
+            }
 
-			return Equals((ColoredMessage)obj);
-		}
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
 
-		public override int GetHashCode()
-		{
-			unchecked
-			{
-				var hashCode = Text != null ? Text.GetHashCode() : 0;
-				hashCode = (hashCode * 397) ^ TextColor.GetHashCode();
-				return hashCode;
-			}
-		}
+            if (obj.GetType() != GetType())
+            {
+                return false;
+            }
 
-		public static bool operator ==(ColoredMessage firstMessage, ColoredMessage secondMessage)
-		{
-			if (ReferenceEquals(firstMessage, secondMessage))
-				return true;
+            return Equals((ColoredMessage)obj);
+        }
 
-			if (ReferenceEquals(firstMessage, null) || ReferenceEquals(secondMessage, null))
-				return false;
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = Text != null ? Text.GetHashCode() : 0;
+                hashCode = (hashCode * 397) ^ TextColor.GetHashCode();
+                return hashCode;
+            }
+        }
 
-			return firstMessage.Equals(secondMessage);
-		}
+        public static bool operator ==(ColoredMessage firstMessage, ColoredMessage secondMessage)
+        {
+            if (ReferenceEquals(firstMessage, secondMessage))
+                return true;
 
-		public static bool operator !=(ColoredMessage firstMessage, ColoredMessage secondMessage)
-		{
-			return !(firstMessage == secondMessage);
-		}
+            if (ReferenceEquals(firstMessage, null) || ReferenceEquals(secondMessage, null))
+                return false;
 
-		public override string ToString() => Text;
+            return firstMessage.Equals(secondMessage);
+        }
 
-		public ColoredMessage Clone()
-		{
-			return new ColoredMessage(Text?.Clone() as string, TextColor);
-		}
+        public static bool operator !=(ColoredMessage firstMessage, ColoredMessage secondMessage)
+        {
+            return !(firstMessage == secondMessage);
+        }
 
-		object ICloneable.Clone()
-		{
-			return Clone();
-		}
-	}
+        public override string ToString() => Text;
+
+        public ColoredMessage Clone()
+        {
+            return new ColoredMessage(Text?.Clone() as string, TextColor);
+        }
+
+        object ICloneable.Clone()
+        {
+            return Clone();
+        }
+    }
 }

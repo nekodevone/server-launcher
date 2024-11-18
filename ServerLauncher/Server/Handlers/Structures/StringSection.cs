@@ -19,15 +19,15 @@ namespace ServerLauncher.Server.Handlers.Structures
         public ColoredMessage Text { get; }
 
         public ColoredMessage LeftIndicator { get; }
-    
+
         public ColoredMessage RightIndicator { get; }
 
-        public ColoredMessage[] Section => new ColoredMessage[] {LeftIndicator, Text, RightIndicator};
+        public ColoredMessage[] Section => new ColoredMessage[] { LeftIndicator, Text, RightIndicator };
 
         public int MinIndex { get; }
-    
+
         public int MaxIndex { get; }
-    
+
         public bool IsWithinSection(int index)
         {
             return index >= MinIndex && index <= MaxIndex;

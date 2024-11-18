@@ -17,7 +17,8 @@ namespace ServerLauncher.Server
         /// <returns></returns>
         /// <exception cref="NullReferenceException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static int IndexOfNonEscaped(string inString, char inChar, int startIndex, int count, char escapeChar = '\\')
+        public static int IndexOfNonEscaped(string inString, char inChar, int startIndex, int count,
+            char escapeChar = '\\')
         {
             if (inString == null)
             {
@@ -140,7 +141,8 @@ namespace ServerLauncher.Server
 
                     if (stringChar == quoteChar && (inQuotes || ((i + 1) < count &&
                                                                  IndexOfNonEscaped(inString, quoteChar,
-                                                                     startIndex + (i + 1), count - (i + 1), escapeChar) >
+                                                                     startIndex + (i + 1), count - (i + 1),
+                                                                     escapeChar) >
                                                                  0)))
                     {
                         // Ignore quotes if there's no future non-escaped quotes
@@ -217,7 +219,8 @@ namespace ServerLauncher.Server
         /// <param name="quoteChar"></param>
         /// <param name="keepQuotes"></param>
         /// <returns></returns>
-        public static string[] StringToArgs(string inString, int startIndex, char separator = ' ', char escapeChar = '\\',
+        public static string[] StringToArgs(string inString, int startIndex, char separator = ' ',
+            char escapeChar = '\\',
             char quoteChar = '\"', bool keepQuotes = false)
         {
             return StringToArgs(inString, startIndex, inString.Length - startIndex, separator, escapeChar, quoteChar,
