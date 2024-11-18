@@ -6,8 +6,6 @@ using ServerLauncher.Extensions;
 using ServerLauncher.Interfaces;
 using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
-using ServerLauncher.Server.Features;
-using ServerLauncher.Server.Features.Attributes;
 using ServerLauncher.Server.Handlers;
 
 namespace ServerLauncher.Server
@@ -36,11 +34,6 @@ namespace ServerLauncher.Server
         ///     Конфиг
         /// </summary>
         public ServerConfig Config { get; }
-
-        /// <summary>
-        ///     Фичи
-        /// </summary>
-        public IEnumerable<ServerFeature> Features => _features;
 
         /// <summary>
         ///     Команды
@@ -161,12 +154,12 @@ namespace ServerLauncher.Server
 
         private static readonly Dictionary<string, ICommand> _commands = new();
 
-        private readonly List<ServerFeature> _features = new();
         private DateTime _initRestartTimeoutTime;
 
         private DateTime _initStopTimeoutTime;
 
         private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
+
         private string _startDateTime;
 
         public Server(string id = null, string configLocation = null, string[] args = null)
@@ -185,26 +178,6 @@ namespace ServerLauncher.Server
             Arguments = args;
 
             LogDirectory = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var features = assembly.GetTypes().Where(type =>
-                    type.GetCustomAttribute(typeof(ServerFeatureAttribute), true) is not null);
-
-                foreach (var feature in features)
-                    try
-                    {
-                        var instance = Activator.CreateInstance(feature, this);
-
-                        if (instance is not ServerFeature serverFeature) continue;
-
-                        RegisterFeature(serverFeature);
-                    }
-                    catch (Exception exception)
-                    {
-                        SendError(exception.Message);
-                    }
-            }
         }
 
         public void Start(bool restartOnCrash = true)
@@ -288,8 +261,6 @@ namespace ServerLauncher.Server
                     GameProcess.BeginErrorReadLine();
 
                     Status = ServerStatusType.Running;
-
-                    EnableFeatures();
 
                     MainLoop();
 
@@ -445,38 +416,6 @@ namespace ServerLauncher.Server
 
             Socket.SendMessage(message);
             return true;
-        }
-
-        public void EnableFeatures()
-        {
-            foreach (var feature in _features)
-            {
-                feature.Enabled();
-                feature.ConfigReloaded();
-            }
-        }
-
-        public void RegisterFeature(ServerFeature serverFeature)
-        {
-            if (serverFeature is ICommand command)
-            {
-                var commandKey = command.Command.ToLower().Trim();
-
-                // If the command was already registered
-                if (_commands.ContainsKey(commandKey))
-                {
-                    var message =
-                        $"Warning, ServerLauncher tried to register duplicate command \"{commandKey}\"";
-
-                    Log.Debug(message, Id);
-                }
-                else
-                {
-                    _commands.Add(commandKey, command);
-                }
-            }
-
-            _features.Add(serverFeature);
         }
 
         private void MainLoop()
