@@ -50,7 +50,9 @@ namespace ServerLauncher
             }
 
             if (_exitSignalListener != null)
+            {
                 _exitSignalListener.Exit += OnExit;
+            }
 
             // Удаляем путь к исполняемому файлу
             if (Args.Length > 0)
@@ -79,18 +81,20 @@ namespace ServerLauncher
 
             switch (string.IsNullOrEmpty(server.Id))
             {
-                case false when !string.IsNullOrEmpty(server.ConfigLocation):
+                case false when !string.IsNullOrEmpty(server.ConfigDir):
                     Log.Info(
-                        $"Starting this instance with Server ID: \"{server.Id}\" and config directory: \"{server.ConfigLocation}\"...");
+                        $"Starting this instance with Server ID: \"{server.Id}\" and config directory: \"{server.ConfigDir}\"...");
                     break;
+
                 case false:
                     Log.Info($"Starting this instance with Server ID: \"{server.Id}\"...");
                     break;
+
                 default:
                 {
                     Log.Info(
-                        !string.IsNullOrEmpty(server.ConfigLocation)
-                            ? $"Starting this instance with config directory: \"{server.ConfigLocation}\"..."
+                        !string.IsNullOrEmpty(server.ConfigDir)
+                            ? $"Starting this instance with config directory: \"{server.ConfigDir}\"..."
                             : "Starting this instance in single server mode...");
                     break;
                 }
@@ -117,7 +121,7 @@ namespace ServerLauncher
 
                 Log.Info("Stopping servers and exiting Laucnher...", color: ConsoleColor.DarkMagenta);
 
-                foreach (var server in InstantiatedServers.Where(server => server.IsGameProcessRunning))
+                foreach (var server in InstantiatedServers.Where(server => server.IsServerProcessRunning))
                 {
                     try
                     {
@@ -132,7 +136,7 @@ namespace ServerLauncher
                         var timeToWait = Math.Max(LauncherConfig.SafeShutdownCheckDelay, 0);
                         var timeWaited = 0;
 
-                        while (server.IsGameProcessRunning)
+                        while (server.IsServerProcessRunning)
                         {
                             Thread.Sleep(timeToWait);
                             timeWaited += timeToWait;

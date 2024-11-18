@@ -15,73 +15,69 @@ namespace ServerLauncher.Server
         public const int TxBufferSize = 200000;
 
         /// <summary>
-        ///     Айди
+        /// ID
         /// </summary>
         public string Id { get; }
 
         /// <summary>
-        ///     Сокет
-        /// </summary>
-        public ServerSocket Socket { get; private set; }
-
-        /// <summary>
-        ///     Процесс игры
-        /// </summary>
-        public Process GameProcess { get; private set; }
-
-        /// <summary>
-        ///     Конфиг
-        /// </summary>
-        public ServerConfig Config { get; }
-
-        /// <summary>
-        ///     Запущен ли процесс игры
-        /// </summary>
-        public bool IsGameProcessRunning
-        {
-            get
-            {
-                if (GameProcess is null)
-                    return false;
-
-                GameProcess.Refresh();
-
-                return !GameProcess.HasExited;
-            }
-        }
-
-        /// <summary>
-        ///     Папка сервера
-        /// </summary>
-        public string ServerDir { get; }
-
-        /// <summary>
-        ///     Путь к логам
-        /// </summary>
-        public string LogDirectory { get; private set; }
-
-        /// <summary>
-        ///     Локация конфига
-        /// </summary>
-        public string ConfigLocation { get; }
-
-        /// <summary>
-        ///     Порт
+        /// Port
         /// </summary>
         public uint Port => Config.Port;
 
         /// <summary>
-        ///     Аргументы
+        /// Console socket
+        /// </summary>
+        private ServerSocket Socket { get; set; }
+
+        /// <summary>
+        /// Process
+        /// </summary>
+        private Process ServerProcess { get; set; }
+
+        /// <summary>
+        /// Configuration
+        /// </summary>
+        private ServerConfig Config { get; }
+
+        /// <summary>
+        /// Is server process running
+        /// </summary>
+        public bool IsServerProcessRunning
+        {
+            get
+            {
+                if (ServerProcess is null)
+                {
+                    return false;
+                }
+
+                ServerProcess.Refresh();
+                return !ServerProcess.HasExited;
+            }
+        }
+
+        /// <summary>
+        /// Configuration directory path
+        /// </summary>
+        public string ConfigDir { get; }
+
+        /// <summary>
+        /// Logs directory path
+        /// </summary>
+        public string LogsDir { get; }
+
+        /// <summary>
+        /// Additional arguments
         /// </summary>
         public string[] Arguments { get; }
 
         /// <summary>
-        ///     Поддерживаемые фичи
+        /// Supported mod features
         /// </summary>
         public ModFeatures SupportModFeatures { get; set; }
 
         /// <summary>
-        ///     Статус сервера
+        /// Current server status
         /// </summary>
         public ServerStatusType Status
         {
@@ -94,49 +90,49 @@ namespace ServerLauncher.Server
         }
 
         /// <summary>
-        ///     Статус сервера
+        /// Last known server status
         /// </summary>
         public ServerStatusType LastStatus { get; private set; }
 
         /// <summary>
-        ///     Выключен ли
+        /// Is server running
+        /// </summary>
+        public bool IsRunning => !IsStopped;
+
+        /// <summary>
+        /// Is server stopped
         /// </summary>
         public bool IsStopped => Status is ServerStatusType.NotStarted or ServerStatusType.Stopped
             or ServerStatusType.StoppedUnexpectedly;
 
         /// <summary>
-        ///     Запущен ли
-        /// </summary>
-        public bool IsRunning => !IsStopped;
-
-        /// <summary>
-        ///     Включен ли
+        /// Is server started
         /// </summary>
         public bool IsStarted => !IsStopped && !IsStarting;
 
         /// <summary>
-        ///     Включается ли
+        /// Is server starting
         /// </summary>
         public bool IsStarting => Status is ServerStatusType.Starting;
 
         /// <summary>
-        ///     Выключается ли
+        /// Is server stopping
         /// </summary>
         public bool IsStopping =>
             Status is ServerStatusType.Stopping or ServerStatusType.ForceStopping or ServerStatusType.Restarting;
 
         /// <summary>
-        ///     Загружается ли
+        /// Is server loading
         /// </summary>
         public bool IsLoading { get; set; }
 
         /// <summary>
-        ///     Время запуска
+        /// Start time
         /// </summary>
         public DateTime StartTime { get; private set; }
 
         /// <summary>
-        ///     Путь к файлу логов игры
+        /// Game logs directory path
         /// </summary>
         public string GameLogDirectoryFile { get; private set; }
 
@@ -158,23 +154,26 @@ namespace ServerLauncher.Server
         {
             Id = id;
 
-            ServerDir = string.IsNullOrEmpty(Id)
+            ConfigDir = string.IsNullOrEmpty(Id)
                 ? null
                 : Utilities.GetFullPathSafe(Path.Combine(Program.LauncherConfig.ConfigDir, Id));
 
-            ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
-                             Utilities.GetFullPathSafe(ServerDir);
+            ConfigDir = Utilities.GetFullPathSafe(configLocation) ??
+                        Utilities.GetFullPathSafe(ConfigDir);
 
-            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "launcher.yml"));
+            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigDir, "launcher.yml"));
 
             Arguments = args;
 
-            LogDirectory = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
+            LogsDir = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
         }
 
         public void Start(bool restartOnCrash = true)
         {
-            if (!IsStopped) throw new ServerAlreadyRunningException();
+            if (!IsStopped)
+            {
+                throw new ServerAlreadyRunningException();
+            }
 
             var shouldRestart = false;
 
@@ -185,7 +184,7 @@ namespace ServerLauncher.Server
 
                 try
                 {
-                    Program.Logger.InitializeServerLogger(Id, LogDirectory);
+                    Program.Logger.InitializeServerLogger(Id, LogsDir);
 
                     Log.Info($"{Id} is executing...", Id);
 
@@ -225,13 +224,13 @@ namespace ServerLauncher.Server
                     socket.OnReceiveMessage += outputHandler.HandleMessage;
                     socket.OnReceiveAction += outputHandler.HandleAction;
 
-                    GameProcess = new Process
+                    ServerProcess = new Process
                     {
                         StartInfo = startInfo,
                         EnableRaisingEvents = true
                     };
 
-                    GameProcess.OutputDataReceived += (sender, e) =>
+                    ServerProcess.OutputDataReceived += (sender, e) =>
                     {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
@@ -239,7 +238,7 @@ namespace ServerLauncher.Server
                         }
                     };
 
-                    GameProcess.ErrorDataReceived += (sender, e) =>
+                    ServerProcess.ErrorDataReceived += (sender, e) =>
                     {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
@@ -247,10 +246,10 @@ namespace ServerLauncher.Server
                         }
                     };
 
-                    GameProcess.Start();
+                    ServerProcess.Start();
 
-                    GameProcess.BeginOutputReadLine();
-                    GameProcess.BeginErrorReadLine();
+                    ServerProcess.BeginOutputReadLine();
+                    ServerProcess.BeginErrorReadLine();
 
                     Status = ServerStatusType.Running;
 
@@ -283,8 +282,8 @@ namespace ServerLauncher.Server
                                 break;
                         }
 
-                        GameProcess?.Dispose();
-                        GameProcess = null;
+                        ServerProcess?.Dispose();
+                        ServerProcess = null;
 
                         if (inputHandler is not null)
                         {
@@ -357,8 +356,8 @@ namespace ServerLauncher.Server
 
             SetRestartStatus();
 
-            if ((killGame || !SendSocketMessage("SOFTRESTART")) && IsGameProcessRunning)
-                GameProcess.Kill();
+            if ((killGame || !SendSocketMessage("SOFTRESTART")) && IsServerProcessRunning)
+                ServerProcess.Kill();
         }
 
         public void SetStopStatus(bool killGame = false)
@@ -375,7 +374,7 @@ namespace ServerLauncher.Server
 
             SetStopStatus(killGame);
 
-            if ((killGame || !SendSocketMessage("QUIT")) && IsGameProcessRunning) GameProcess.Kill();
+            if ((killGame || !SendSocketMessage("QUIT")) && IsServerProcessRunning) ServerProcess.Kill();
         }
 
         public bool SetServerRequestedStatus(ServerStatusType status)
@@ -416,7 +415,7 @@ namespace ServerLauncher.Server
             var timer = new Stopwatch();
             timer.Restart();
 
-            while (IsGameProcessRunning)
+            while (IsServerProcessRunning)
             {
                 ServerEvents.OnTick();
 
@@ -482,10 +481,10 @@ namespace ServerLauncher.Server
                 arguments.Add(GameLogDirectoryFile);
             }
 
-            if (!string.IsNullOrEmpty(ConfigLocation))
+            if (!string.IsNullOrEmpty(ConfigDir))
             {
                 arguments.Add("-configpath");
-                arguments.Add(ConfigLocation);
+                arguments.Add(ConfigDir);
             }
 
             arguments.AddRange(Arguments.Where(arg => arg != null));
