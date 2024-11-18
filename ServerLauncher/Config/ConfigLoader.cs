@@ -1,16 +1,18 @@
 ﻿using System.Text;
 using ServerLauncher.Logger;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace ServerLauncher.Config
 {
     public sealed class ConfigLoader
     {
         private readonly ISerializer _serializer = new SerializerBuilder()
+            .WithNamingConvention(UnderscoredNamingConvention.Instance)
             .Build();
 
         private readonly IDeserializer _deserializer = new DeserializerBuilder()
-            .IgnoreUnmatchedProperties()
+            .WithNamingConvention(UnderscoredNamingConvention.Instance)
             .Build();
 
         public T Load<T>(string path) where T : IConfig, new()
