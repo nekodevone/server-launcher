@@ -1,4 +1,4 @@
-namespace ServerLauncher.Utility
+namespace ServerLauncher.Extensions
 {
     public static class EmptyExtensions
     {

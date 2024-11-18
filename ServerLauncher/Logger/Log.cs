@@ -21,7 +21,7 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"default-{Utilities.DateTime}.log");
+            var path = Path.Combine(directory, $"default-{DateTimeUtils.GetDateTime()}.log");
             _streamWriters.Add("default", File.AppendText(path));
         }
 
@@ -32,7 +32,7 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"{Utilities.DateTime}.log");
+            var path = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}.log");
 
             if (_streamWriters.TryGetValue(serverId, out var existingWriter))
             {
@@ -120,7 +120,7 @@ namespace ServerLauncher.Logger
                 return;
             }
 
-            var stdoutLogPath = Path.Combine(logDirectory, $"stdout-{Utilities.DateTime}.log");
+            var stdoutLogPath = Path.Combine(logDirectory, $"stdout-{DateTimeUtils.GetDateTime()}.log");
 
             try
             {
