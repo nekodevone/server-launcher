@@ -186,7 +186,7 @@ namespace ServerLauncher.Server
 
             Arguments = args;
 
-            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "config.yml"));
+            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "launcher.yml"));
 
             LogDirectory = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
 
