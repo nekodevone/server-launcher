@@ -1,55 +1,56 @@
 using ServerLauncher.Logger;
 
-namespace ServerLauncher;
-
-public delegate void CustomEventHandler();
-
-public class Event
+namespace ServerLauncher
 {
-    private event CustomEventHandler InnerEvent;
+    public delegate void CustomEventHandler();
 
-    public static Event operator +(Event @event, CustomEventHandler customEventHandler)
+    public class Event
     {
-        @event.Subscribe(customEventHandler);
-        return @event;
-    }
+        private event CustomEventHandler InnerEvent;
 
-    public static Event operator -(Event @event, CustomEventHandler customEventHandler)
-    {
-        @event.Unsubscribe(customEventHandler);
-        return @event;
-    }
-
-    public void Subscribe(CustomEventHandler customEventHandler)
-    {
-        InnerEvent += customEventHandler;
-    }
-
-    public void Unsubscribe(CustomEventHandler customEventHandler)
-    {
-        InnerEvent -= customEventHandler;
-    }
-
-    public void InvokeSafely()
-    {
-        InvokeNormal();
-    }
-
-    internal void InvokeNormal()
-    {
-        if (InnerEvent is null)
-            return;
-
-        foreach (var handler in InnerEvent.GetInvocationList().Cast<CustomEventHandler>())
+        public static Event operator +(Event @event, CustomEventHandler customEventHandler)
         {
-            try
+            @event.Subscribe(customEventHandler);
+            return @event;
+        }
+
+        public static Event operator -(Event @event, CustomEventHandler customEventHandler)
+        {
+            @event.Unsubscribe(customEventHandler);
+            return @event;
+        }
+
+        public void Subscribe(CustomEventHandler customEventHandler)
+        {
+            InnerEvent += customEventHandler;
+        }
+
+        public void Unsubscribe(CustomEventHandler customEventHandler)
+        {
+            InnerEvent -= customEventHandler;
+        }
+
+        public void InvokeSafely()
+        {
+            InvokeNormal();
+        }
+
+        internal void InvokeNormal()
+        {
+            if (InnerEvent is null)
+                return;
+
+            foreach (var handler in InnerEvent.GetInvocationList().Cast<CustomEventHandler>())
             {
-                handler();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(
-                    $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
+                try
+                {
+                    handler();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(
+                        $"Method \"{handler.Method.Name}\" of the class \"{handler.Method.ReflectedType.FullName}\" caused an exception when handling the event \"{GetType().FullName}\"\n{ex}");
+                }
             }
         }
     }

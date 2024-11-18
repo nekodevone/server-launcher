@@ -1,14 +1,15 @@
-namespace ServerLauncher.Server.EventArgs;
-
-public class MessageEventArgs
+namespace ServerLauncher.Server.EventArgs
 {
-    public MessageEventArgs(string message, byte color)
+    public class MessageEventArgs
     {
-        Message = message;
-        Color = color;
+        public MessageEventArgs(string message, byte color)
+        {
+            Message = message;
+            Color = color;
+        }
+
+        public string Message { get; }
+
+        public byte Color { get; }
     }
-
-    public string Message { get; }
-
-    public byte Color { get; }
 }

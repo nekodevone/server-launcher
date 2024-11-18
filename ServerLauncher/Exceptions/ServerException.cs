@@ -1,6 +1,7 @@
-namespace ServerLauncher.Exceptions;
-
-public abstract class ServerException : Exception
+namespace ServerLauncher.Exceptions
 {
-    protected ServerException(string message) : base(message) { }
+    public abstract class ServerException : Exception
+    {
+        protected ServerException(string message) : base(message) { }
+    }
 }

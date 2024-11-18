@@ -1,8 +1,9 @@
-namespace ServerLauncher.Exceptions;
-
-public class ServerAlreadyRunningException : ServerException
+namespace ServerLauncher.Exceptions
 {
-    public ServerAlreadyRunningException() : base("The server is already running")
+    public class ServerAlreadyRunningException : ServerException
     {
+        public ServerAlreadyRunningException() : base("The server is already running")
+        {
+        }
     }
 }

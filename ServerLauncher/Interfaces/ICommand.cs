@@ -1,14 +1,15 @@
-namespace ServerLauncher.Interfaces;
-
-public interface ICommand
+namespace ServerLauncher.Interfaces
 {
-    string Command { get; }
+    public interface ICommand
+    {
+        string Command { get; }
     
-    string Description { get; }
+        string Description { get; }
     
-    string Usage { get; }
+        string Usage { get; }
     
-    bool IsPassToGame { get; }
+        bool IsPassToGame { get; }
     
-    void Execute(ArraySegment<string> arguments);
+        void Execute(ArraySegment<string> arguments);
+    }
 }

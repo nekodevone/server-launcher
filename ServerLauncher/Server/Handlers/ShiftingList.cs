@@ -1,67 +1,68 @@
 using System.Collections.ObjectModel;
 
-namespace ServerLauncher.Server.Handlers;
-
-public class ShiftingList : ReadOnlyCollection<string>
+namespace ServerLauncher.Server.Handlers
 {
-    public ShiftingList(int maxCount) : base(new List<string>(maxCount))
+    public class ShiftingList : ReadOnlyCollection<string>
     {
-        if (maxCount <= 0)
-            throw new ArgumentException("The maximum index count can not be less than or equal to zero.");
-
-        MaxCount = maxCount;
-    }
-
-    public int MaxCount { get; }
-
-    private void LimitLength()
-    {
-        while (Items.Count > MaxCount)
+        public ShiftingList(int maxCount) : base(new List<string>(maxCount))
         {
-            RemoveFromEnd();
+            if (maxCount <= 0)
+                throw new ArgumentException("The maximum index count can not be less than or equal to zero.");
+
+            MaxCount = maxCount;
         }
-    }
 
-    public void Add(string item, int index = 0)
-    {
-        lock (Items)
+        public int MaxCount { get; }
+
+        private void LimitLength()
         {
-            Items.Insert(index, item);
-
-            LimitLength();
+            while (Items.Count > MaxCount)
+            {
+                RemoveFromEnd();
+            }
         }
-    }
 
-    public void Remove(string item)
-    {
-        lock (Items)
+        public void Add(string item, int index = 0)
         {
-            Items.Remove(item);
+            lock (Items)
+            {
+                Items.Insert(index, item);
+
+                LimitLength();
+            }
         }
-    }
 
-    public void RemoveFromEnd()
-    {
-        lock (Items)
+        public void Remove(string item)
         {
-            Items.RemoveAt(Items.Count - 1);
+            lock (Items)
+            {
+                Items.Remove(item);
+            }
         }
-    }
 
-    public void RemoveAt(int index)
-    {
-        lock (Items)
+        public void RemoveFromEnd()
         {
-            Items.RemoveAt(index);
+            lock (Items)
+            {
+                Items.RemoveAt(Items.Count - 1);
+            }
         }
-    }
 
-    public void Replace(string item, int index = 0)
-    {
-        lock (Items)
+        public void RemoveAt(int index)
         {
-            RemoveAt(index);
-            Add(item, index);
+            lock (Items)
+            {
+                Items.RemoveAt(index);
+            }
+        }
+
+        public void Replace(string item, int index = 0)
+        {
+            lock (Items)
+            {
+                RemoveAt(index);
+                Add(item, index);
+            }
         }
     }
 }

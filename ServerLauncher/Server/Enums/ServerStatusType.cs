@@ -1,15 +1,16 @@
-namespace ServerLauncher.Server.Enums;
-
-public enum ServerStatusType
+namespace ServerLauncher.Server.Enums
 {
-    NotStarted,
-    Starting,
-    Running,
-    Stopping,
-    ExitActionStop,
-    ForceStopping,
-    Restarting,
-    ExitActionRestart,
-    Stopped,
-    StoppedUnexpectedly
+    public enum ServerStatusType
+    {
+        NotStarted,
+        Starting,
+        Running,
+        Stopping,
+        ExitActionStop,
+        ForceStopping,
+        Restarting,
+        ExitActionRestart,
+        Stopped,
+        StoppedUnexpectedly
+    }
 }
