@@ -21,7 +21,7 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"default-{DateTimeUtils.GetDateTime()}.log");
+            var path = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}-Launcher.log");
             _streamWriters.Add("default", File.AppendText(path));
         }
 
@@ -32,7 +32,7 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}.log");
+            var path = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}-Launcher.log");
 
             if (_streamWriters.TryGetValue(serverId, out var existingWriter))
             {
@@ -120,7 +120,7 @@ namespace ServerLauncher.Logger
                 return;
             }
 
-            var stdoutLogPath = Path.Combine(logDirectory, $"stdout-{DateTimeUtils.GetDateTime()}.log");
+            var stdoutLogPath = Path.Combine(logDirectory, $"{DateTimeUtils.GetDateTime()}-Server.log");
 
             try
             {
@@ -208,7 +208,7 @@ namespace ServerLauncher.Logger
             }
             catch (Exception)
             {
-                Error("Error while logging for Laucnher", serverId);
+                Error("Error while logging for Launcher", serverId);
             }
         }
     }
