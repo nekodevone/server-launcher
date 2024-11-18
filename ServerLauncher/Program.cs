@@ -20,8 +20,6 @@ namespace ServerLauncher
 
         public static bool Headless { get; private set; }
 
-        private static uint? _portArg;
-
         private static readonly string[] Args = Environment.GetCommandLineArgs();
 
         private static IExitSignal _exitSignalListener;
@@ -64,13 +62,12 @@ namespace ServerLauncher
 
             var serverIdArg = GetParamFromArgs(Args, "server-id", "id");
             var configArg = GetParamFromArgs(Args, "config", "c");
-            _portArg = uint.TryParse(GetParamFromArgs(Args, "port", "p"), out var port) ? port : null;
 
             Server.Server server = null;
 
             if (!string.IsNullOrEmpty(serverIdArg) || !string.IsNullOrEmpty(configArg))
             {
-                server = new Server.Server(serverIdArg, _portArg, configArg, Args);
+                server = new Server.Server(serverIdArg, configArg, Args);
 
                 InstantiatedServers.Add(server);
             }

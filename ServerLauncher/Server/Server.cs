@@ -81,7 +81,7 @@ namespace ServerLauncher.Server
         /// <summary>
         ///     Порт
         /// </summary>
-        public uint Port => port ?? Config.Port;
+        public uint Port => Config.Port;
 
         /// <summary>
         ///     Аргументы
@@ -161,8 +161,6 @@ namespace ServerLauncher.Server
 
         private static readonly Dictionary<string, ICommand> _commands = new();
 
-        private readonly uint? port;
-
         private readonly List<ServerFeature> _features = new();
         private DateTime _initRestartTimeoutTime;
 
@@ -171,7 +169,7 @@ namespace ServerLauncher.Server
         private ServerStatusType _serverStatus = ServerStatusType.NotStarted;
         private string _startDateTime;
 
-        public Server(string id = null, uint? port = null, string configLocation = null, string[] args = null)
+        public Server(string id = null, string configLocation = null, string[] args = null)
         {
             Id = id;
 
@@ -182,11 +180,9 @@ namespace ServerLauncher.Server
             ConfigLocation = Utilities.GetFullPathSafe(configLocation) ??
                              Utilities.GetFullPathSafe(ServerDir);
 
-            this.port = port;
+            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "launcher.yml"));
 
             Arguments = args;
-
-            Config = Program.ConfigLoader.Load<ServerConfig>(Path.Combine(ConfigLocation, "launcher.yml"));
 
             LogDirectory = Utilities.GetFullPathSafe(Program.LauncherConfig.LogsDir);
 
