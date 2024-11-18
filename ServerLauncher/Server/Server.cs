@@ -3,7 +3,6 @@ using System.Reflection;
 using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
-using ServerLauncher.Interfaces;
 using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Handlers;
@@ -34,11 +33,6 @@ namespace ServerLauncher.Server
         ///     Конфиг
         /// </summary>
         public ServerConfig Config { get; }
-
-        /// <summary>
-        ///     Команды
-        /// </summary>
-        public Dictionary<string, ICommand> Commands => _commands;
 
         /// <summary>
         ///     Запущен ли процесс игры
@@ -151,8 +145,6 @@ namespace ServerLauncher.Server
 
         public bool CheckRestartTimeout =>
             (DateTime.Now - _initRestartTimeoutTime).Seconds > Program.LauncherConfig.ServerRestartTimeout;
-
-        private static readonly Dictionary<string, ICommand> _commands = new();
 
         private DateTime _initRestartTimeoutTime;
 

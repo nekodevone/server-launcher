@@ -53,23 +53,7 @@ namespace ServerLauncher.Server.Handlers
 
                     Log.Info($">>> {message}", color: ConsoleColor.DarkMagenta);
 
-                    //Является ли команда не лаунчера
-                    var isServerCommand = true;
-
-                    if (server.Commands.TryGetValue(commandName, out var command))
-                    {
-                        isServerCommand = command.IsPassToGame;
-
-                        command.Execute(separatorIndex < 0 || separatorIndex + 1 >= message.Length
-                            ? Array.Empty<string>()
-                            : Utilities.StringToArgs(message, separatorIndex + 1, escapeChar: '\"', quoteChar: '\"'));
-                    }
-
-                    if (isServerCommand)
-                    {
-                        //Команды нету словаре, значит не наша.
-                        server.SendSocketMessage(message);
-                    }
+                    server.SendSocketMessage(message);
                 }
             }
             catch (TaskCanceledException)
