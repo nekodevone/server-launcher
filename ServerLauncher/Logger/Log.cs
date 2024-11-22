@@ -32,16 +32,27 @@ namespace ServerLauncher.Logger
                 Directory.CreateDirectory(directory ?? throw new ArgumentNullException(nameof(directory)));
             }
 
-            var path = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}-Launcher.log");
+            var mainLogPath = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}-Launcher.log");
 
-            if (_streamWriters.TryGetValue(serverId, out var existingWriter))
+            if (_streamWriters.TryGetValue(serverId, out var existingMainWriter))
             {
-                existingWriter.Close();
-                existingWriter.Dispose();
+                existingMainWriter.Close();
+                existingMainWriter.Dispose();
                 _streamWriters.Remove(serverId);
             }
 
-            _streamWriters.TryAdd(serverId, File.AppendText(path));
+            _streamWriters.TryAdd(serverId, File.AppendText(mainLogPath));
+
+            var stdoutLogPath = Path.Combine(directory, $"{DateTimeUtils.GetDateTime()}-Server.log");
+
+            if (_streamWriters.TryGetValue($"{serverId}-stdout", out var existingStdoutWriter))
+            {
+                existingStdoutWriter.Close();
+                existingStdoutWriter.Dispose();
+                _streamWriters.Remove(serverId);
+            }
+
+            _streamWriters.TryAdd($"{serverId}-stdout", File.AppendText(stdoutLogPath));
         }
 
         /// <summary>
@@ -98,6 +109,7 @@ namespace ServerLauncher.Logger
         public static void Stdout(string serverId, string message, bool isError = false)
         {
             var logType = isError ? "stderr" : "stdout";
+            var logKey = $"{serverId}-stdout";
 
             if (Instance is null)
             {
@@ -105,33 +117,19 @@ namespace ServerLauncher.Logger
                 return;
             }
 
-            if (!Instance._streamWriters.TryGetValue(serverId, out var mainWriter))
+            if (!Instance._streamWriters.TryGetValue(logKey, out var writer))
             {
-                Error($"No logger initialized for server {serverId}. Stdout log cannot be created.");
+                Error($"No logger initialized for {logKey}. Cannot log message: {message}");
                 return;
             }
-
-            var logFilePath = ((FileStream)mainWriter.BaseStream).Name;
-            var logDirectory = Path.GetDirectoryName(logFilePath);
-
-            if (logDirectory == null)
-            {
-                Error($"Failed to determine log directory for server {serverId}");
-                return;
-            }
-
-            var stdoutLogPath = Path.Combine(logDirectory, $"{DateTimeUtils.GetDateTime()}-Server.log");
 
             try
             {
-                using (var writer = File.AppendText(stdoutLogPath))
-                {
-                    var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                    var formattedMessage = $"[{timestamp}] [{logType}] {message}";
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                var formattedMessage = $"[{timestamp}] [{logType}] {message}";
 
-                    writer.WriteLine(formattedMessage);
-                    writer.Flush();
-                }
+                writer.WriteLine(formattedMessage);
+                writer.Flush();
             }
             catch (Exception ex)
             {

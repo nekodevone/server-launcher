@@ -1,11 +1,11 @@
-using System.Diagnostics;
-using System.Reflection;
 using ServerLauncher.Config;
 using ServerLauncher.Exceptions;
 using ServerLauncher.Extensions;
 using ServerLauncher.Logger;
 using ServerLauncher.Server.Enums;
 using ServerLauncher.Server.Handlers;
+using System.Diagnostics;
+using System.Text;
 
 namespace ServerLauncher.Server
 {
@@ -203,7 +203,9 @@ namespace ServerLauncher.Server
                         CreateNoWindow = true,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
-                        RedirectStandardError = true
+                        RedirectStandardError = true,
+                        StandardOutputEncoding = Encoding.UTF8,
+                        StandardErrorEncoding = Encoding.UTF8
                     };
 
                     Log.Info($"Starting server with the following parameters:\n{exe} {startInfo.Arguments}", Id);
@@ -462,18 +464,18 @@ namespace ServerLauncher.Server
 
             if (string.IsNullOrEmpty(GameLogDirectoryFile))
             {
-                arguments.Add("-nolog");
+                //arguments.Add("-nolog");
 
-                if (OperatingSystem.IsLinux())
-                {
-                    arguments.Add("-logFile");
-                    arguments.Add("/dev/null");
-                }
-                else if (OperatingSystem.IsWindows())
-                {
-                    arguments.Add("-logFile");
-                    arguments.Add("NUL");
-                }
+                //if (OperatingSystem.IsLinux())
+                //{
+                //    arguments.Add("-logFile");
+                //    arguments.Add("/dev/null");
+                //}
+                //else if (OperatingSystem.IsWindows())
+                //{
+                //    arguments.Add("-logFile");
+                //    arguments.Add("NUL");
+                //}
             }
             else
             {
