@@ -49,7 +49,7 @@ namespace ServerLauncher.Logger
             {
                 existingStdoutWriter.Close();
                 existingStdoutWriter.Dispose();
-                _streamWriters.Remove(serverId);
+                _streamWriters.Remove($"{serverId}-stdout");
             }
 
             _streamWriters.TryAdd($"{serverId}-stdout", File.AppendText(stdoutLogPath));
